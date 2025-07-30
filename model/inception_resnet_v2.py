@@ -1,0 +1,80 @@
+from turtle import forward
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from torch.utils.data import Dataset, DataLoader
+from torch.nn.common_types import _size_2_t
+
+class InceptionResNetV2(nn.Module):
+    def __init__(self, device: torch.device, embedding_size=512, dropout_keep=0.8) -> None:
+        super(InceptionResNetV2, self).__init__()
+        self.embedding_size = embedding_size
+        self.dropout_keep = dropout_keep
+        self.device = device
+        
+        #Stem
+        self.stem = Stem(device)
+        
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.stem(x)
+
+class Stem(nn.Module):
+    def __init__(self, device: torch.device) -> None:
+        super(Stem, self).__init__()
+        
+        # Input Shape is 299 x 299 x 3
+        self.seq1 = nn.Sequential(
+            Conv2dBatchNormalized(3, 32, kernel_size=3, stride=2, padding="valid", device=device), # Output: 149x149x32 OK!
+            Conv2dBatchNormalized(32, 32, kernel_size=3, padding="valid", device=device), # Output: 147x147x32 OK!
+            Conv2dBatchNormalized(32, 64, kernel_size=3, device=device) # Output: 147x147x64 OK!
+        )
+        
+        # (Branch1) output: 73x73x160
+        self.branch1_pool = nn.MaxPool2d(3, stride=2, padding=0)  # OK!
+        self.branch1_conv = Conv2dBatchNormalized(64, 96, kernel_size=3, stride=2, padding="valid",  device=device)  # OK!
+        
+        # (Branch2) output: 71x71x192
+        self.branch2_seq1 =nn.Sequential(
+            Conv2dBatchNormalized(160, 64, kernel_size=1, device=device), #OK!
+            Conv2dBatchNormalized(64, 96, kernel_size=3, padding="valid", device=device) # OK!
+        )
+        self.branch2_seq2 =nn.Sequential(
+            Conv2dBatchNormalized(160, 64, kernel_size=1, device=device), # OK!
+            Conv2dBatchNormalized(64, 64, kernel_size=(7,1), device=device), # INVERT to (7,1)??
+            Conv2dBatchNormalized(64, 64, kernel_size=(1,7), device=device), # INVERT to (1,7)??
+            Conv2dBatchNormalized(64, 96, kernel_size=3, padding="valid", device=device) # OK!
+        )
+        
+        # (Branch3) output: 35x35x384
+        self.branch3_conv = Conv2dBatchNormalized(192, 192, kernel_size=3, stride=2, padding="valid", device=device) # THE ARTICLE DIDNT EXPLICITLY SAID THIS HAS STRIDE=2!!!
+        self.branch3_pool = nn.MaxPool2d(3, stride=2, padding=0) # OK!
+    
+    def forward(self, x: torch.tensor):
+        x = self.seq1(x) # Output: 147x147x64
+        x = torch.cat([self.branch1_pool(x), self.branch1_conv(x)], dim=1) # Output: 73x73x160
+        x = torch.cat([self.branch2_seq1(x), self.branch2_seq2(x)], dim=1) # Output: 71x71x192
+        x = torch.cat([self.branch3_conv(x), self.branch3_pool(x)], dim=1) # Output: 35x35x384
+        return x 
+        
+    
+class Conv2dBatchNormalized(nn.Module):
+    def __init__(self, 
+                 in_channels: int, 
+                 out_channels: int, 
+                 kernel_size: _size_2_t, 
+                 padding: _size_2_t | str = "same", 
+                 stride: _size_2_t = 1,
+                 device: torch.device = None,
+                 has_bias: bool = False) -> None:
+
+        super(Conv2dBatchNormalized, self).__init__() 
+        self.conv2d_bn = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, bias=has_bias, device=device),
+                nn.BatchNorm2d(out_channels),
+                nn.ReLU(inplace=True)
+        ) 
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.conv2d_bn(x)
+    
+    
