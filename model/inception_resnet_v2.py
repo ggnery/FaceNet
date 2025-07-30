@@ -25,15 +25,18 @@ class InceptionResNetV2(nn.Module):
             
         # 10 x InceptionResNetB
         self.resnet_b_blocks = nn.Sequential(
-            *[InceptionResNetB(1152,  0.17, device) for _ in range (10)]
+            *[InceptionResNetB(1152,  0.1, device) for _ in range (10)]
         )
+        
+        self.reduction_b = ReductionB(1152, device)
         
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         stem = self.stem(x)
         resnet_a = self.resnet_a_blocks(stem) 
         reduction_a = self.reduction_a(resnet_a)
         resnet_b = self.resnet_b_blocks(reduction_a)
-        return resnet_b
+        reduction_b = self.reduction_b(resnet_b)
+        return reduction_b
 
 class Stem(nn.Module):
     def __init__(self, device: torch.device) -> None:
@@ -106,7 +109,7 @@ class InceptionResNetA(nn.Module):
         return self.relu(residual_sum)
         
 class ReductionA(nn.Module):
-    def __init__(self, in_channels, k: int = 256, l: int = 256, m: int = 384, n: int = 384, device: torch.device = None) -> None:
+    def __init__(self, in_channels: int, k: int = 256, l: int = 256, m: int = 384, n: int = 384, device: torch.device = None) -> None:
         super(ReductionA, self).__init__()
         self.branch1 = nn.MaxPool2d(3, stride=2, padding=0)
         self.branch2 = Conv2dBatchNormalized(in_channels, n, kernel_size=3, padding="valid", stride = 2, device = device)
@@ -147,6 +150,32 @@ class InceptionResNetB(nn.Module):
         
         residual_sum = linear_out * self.scale + x
         return self.relu(residual_sum)
+    
+class ReductionB(nn.Module):
+    def __init__(self, in_channels: int, device: torch.device = None) -> None:
+        super(ReductionB, self).__init__()
+        self.branch1 = nn.MaxPool2d(kernel_size=3, stride=2, padding=0)
+        self.branch2 = nn.Sequential(
+            Conv2dBatchNormalized(in_channels, 256, kernel_size=1, device=device),
+            Conv2dBatchNormalized(256, 384, kernel_size=3, padding="valid", stride=2, device=device)
+        )
+        self.branch3 = nn.Sequential(
+            Conv2dBatchNormalized(in_channels, 256, kernel_size=1, device=device),
+            Conv2dBatchNormalized(256, 288, kernel_size=3, padding="valid", stride=2, device=device)
+        )
+        self.branch4 = nn.Sequential(
+            Conv2dBatchNormalized(in_channels, 256, kernel_size=1, device=device),
+            Conv2dBatchNormalized(256, 288, kernel_size=3, device=device),
+            Conv2dBatchNormalized(288, 320, kernel_size=3, padding="valid", stride=2, device=device)
+        )
+        
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        branch1 = self.branch1(x)
+        branch2 = self.branch2(x)
+        branch3 = self.branch3(x)
+        branch4 = self.branch4(x)
+
+        return torch.cat([branch1, branch2, branch3, branch4], dim=1)
 class Conv2dBatchNormalized(nn.Module):
     def __init__(self, 
                  in_channels: int, 
