@@ -17,13 +17,15 @@ class InceptionResNetV2(nn.Module):
         #Stem
         self.stem = Stem(device)
         
-        #InceptionResNetA
-        self.resnet_a = InceptionResNetA(384, 0.17, device)
+        #5 x InceptionResNetA
+        self.resnet_a_blocks = nn.Sequential(
+            *[InceptionResNetA(384, 0.17, device) for _ in range(5)]
+        ) 
+            
         
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         stem = self.stem(x)
-        
-        resnet_a = self.resnet_a(stem) 
+        resnet_a = self.resnet_a_blocks(stem) 
         
         return resnet_a
 
