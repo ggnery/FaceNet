@@ -2,6 +2,7 @@ from turtle import forward
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.modules import linear
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from torch.nn.common_types import _size_2_t
@@ -16,8 +17,15 @@ class InceptionResNetV2(nn.Module):
         #Stem
         self.stem = Stem(device)
         
+        #InceptionResNetA
+        self.resnet_a = InceptionResNetA(384, 0.17, device)
+        
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.stem(x)
+        stem = self.stem(x)
+        
+        resnet_a = self.resnet_a(stem) 
+        
+        return resnet_a
 
 class Stem(nn.Module):
     def __init__(self, device: torch.device) -> None:
@@ -56,6 +64,38 @@ class Stem(nn.Module):
         x = torch.cat([self.branch2_seq1(x), self.branch2_seq2(x)], dim=1) # Output: 71x71x192
         x = torch.cat([self.branch3_conv(x), self.branch3_pool(x)], dim=1) # Output: 35x35x384
         return x 
+
+class InceptionResNetA(nn.Module):
+    def __init__(self, in_channels: int, scale: float = 0.17, device: torch.device = None) -> None:
+        super(InceptionResNetA, self).__init__()     
+        self.scale = scale
+        self.branch1= Conv2dBatchNormalized(in_channels, 32, 1) 
+        
+        self.branch2= nn.Sequential(
+            Conv2dBatchNormalized(in_channels, 32, kernel_size=1, device=device), 
+            Conv2dBatchNormalized(32, 32, kernel_size=3, device=device)
+        )   
+        
+        self.branch3= nn.Sequential(
+            Conv2dBatchNormalized(in_channels, 32, kernel_size=1, device=device),
+            Conv2dBatchNormalized(32, 48, kernel_size=3, device=device),
+            Conv2dBatchNormalized(48, 64, kernel_size=3, device=device)
+        ) 
+        
+        self.linear_conv = nn.Conv2d(128, in_channels, kernel_size=1, padding="same", bias=True)
+        self.relu = nn.ReLU(inplace=True)
+    
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        branch1 = self.branch1(x) # Output: 35x35x32
+        branch2 = self.branch2(x) # Output: 35x35x32
+        branch3 = self.branch3(x) # Output: 35x35x32
+        
+        mixed = torch.cat([branch1, branch2, branch3], dim=1) # Output: 35x35x96
+        linear_out = self.linear_conv(mixed) # Output: 35x35x384
+        
+        residual_sum = linear_out * self.scale + x
+        
+        return self.relu(residual_sum)
         
     
 class Conv2dBatchNormalized(nn.Module):
