@@ -1,18 +1,12 @@
-from turtle import forward
-from sympy.strategies import branch
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from torch.nn.modules import linear
-import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
 from torch.nn.common_types import _size_2_t
 
 class InceptionResNetV2(nn.Module):
     def __init__(self, device: torch.device, embedding_size=512, dropout_keep=0.8) -> None:
         super(InceptionResNetV2, self).__init__()
         self.embedding_size = embedding_size
-        self.dropout_keep = dropout_keep
+        self.dropout_prob = 1 - dropout_keep
         self.device = device
         
         #Stem
@@ -36,6 +30,18 @@ class InceptionResNetV2(nn.Module):
             *[InceptionResNetC(2144,  0.2, device) for _ in range (5)]
         )
         
+        # AvgPool
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        
+        # Dropout 
+        self.dropout = nn.Dropout(self.dropout_prob)
+        
+        # Linear
+        self.linear = nn.Sequential(
+            nn.Linear(2144, self.embedding_size),
+            nn.BatchNorm1d(self.embedding_size),
+        )
+        
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         stem = self.stem(x)
         resnet_a = self.resnet_a_blocks(stem) 
@@ -43,7 +49,13 @@ class InceptionResNetV2(nn.Module):
         resnet_b = self.resnet_b_blocks(reduction_a)
         reduction_b = self.reduction_b(resnet_b) 
         resnet_c = self.resnet_c_blocks(reduction_b)
-        return resnet_c
+        
+        avgpool = self.avgpool(resnet_c)
+        avgpool = torch.flatten(avgpool, 1)
+
+        dropout = self.dropout(avgpool)
+        linear = self.linear(dropout)
+        return linear
 
 class Stem(nn.Module):
     def __init__(self, device: torch.device) -> None:
