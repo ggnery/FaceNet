@@ -1,7 +1,7 @@
 import torch
 from torch import nn
-from .inception_resnet_v2 import InceptionResNetV2
-from .triplet_loss import TripletLoss
+from .backbone.inception_resnet_v2 import InceptionResNetV2
+from .loss.triplet_loss import TripletLoss
 from typing import Optional, Tuple, Dict
 
 class FaceNet(nn.Module):
