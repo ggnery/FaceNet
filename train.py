@@ -30,12 +30,12 @@ def main(args):
         raise ValueError(f"Data root directory does not exist: {data_root}")
     
     train_dir = data_root / 'train'
-    test_dir = data_root / 'test'
+    val_dir = data_root / 'val'
     
     if not train_dir.exists():
         raise ValueError(f"Training directory does not exist: {train_dir}")
-    if not test_dir.exists():
-        print(f"Warning: Test directory does not exist: {test_dir}")
+    if not val_dir.exists():
+        print(f"Warning: Validation directory does not exist: {val_dir}")
     
     # Create checkpoint directory
     checkpoint_dir = Path(args.checkpoint_dir)
@@ -57,7 +57,7 @@ def main(args):
     ])
     
     train_dataset = VGGFace2Dataset(args.data_root, split='train', transform=train_transforms)
-    val_dataset = VGGFace2Dataset(args.data_root, split='test', transform=val_transforms) if test_dir.exists() else None
+    val_dataset = VGGFace2Dataset(args.data_root, split='val', transform=val_transforms) if val_dir.exists() else None
     
     # Create model
     model = FaceNetInceptionResNetV2(device=device, embedding_size=args.embedding_size)

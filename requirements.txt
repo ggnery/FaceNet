@@ -1,0 +1,11 @@
+# Core dependencies for FaceNet training
+torch==2.7.1
+torchvision==0.22.1
+
+# Dataset download dependencies
+requests==2.32.4
+tqdm==4.67.1
+
+# Training and evaluation dependencies
+numpy==2.1.2
+matplotlib==3.10.3
