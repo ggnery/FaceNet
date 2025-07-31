@@ -141,6 +141,10 @@ class FaceNetTrainer:
             optimizer.zero_grad()
             loss, info = self.model.compute_loss(images, labels)
             
+            # Skip batch if no valid triplets found (optimization)
+            if loss.item() == 0.0 and info.get('total_triplets', 0) == 0:
+                continue
+            
             # Backward pass
             loss.backward()
             optimizer.step()

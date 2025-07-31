@@ -99,7 +99,7 @@ class InceptionResNetA(nn.Module):
     def __init__(self, in_channels: int, scale: float = 0.17, device: torch.device = None) -> None:
         super(InceptionResNetA, self).__init__()     
         self.scale = scale
-        self.branch1= Conv2dBatchNormalized(in_channels, 32, 1) 
+        self.branch1= Conv2dBatchNormalized(in_channels, 32, 1, device=device) 
         
         self.branch2= nn.Sequential(
             Conv2dBatchNormalized(in_channels, 32, kernel_size=1, device=device), 

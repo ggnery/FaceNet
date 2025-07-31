@@ -106,6 +106,9 @@ class FaceNetBatchSampler(Sampler):
         
         print(f"Found {len(self.valid_identities)} identities with >= {faces_per_identity} samples")
         
+        # Cache for efficiency
+        self.num_valid_identities = len(self.valid_identities)
+        
     def __iter__(self):
         """Generate batches according to FaceNet sampling strategy."""
         # Shuffle identities for each epoch
@@ -141,4 +144,4 @@ class FaceNetBatchSampler(Sampler):
             
     def __len__(self):
         """Number of batches per epoch."""
-        return (len(self.valid_identities) + self.num_identities_per_batch - 1) // self.num_identities_per_batch
+        return (self.num_valid_identities + self.num_identities_per_batch - 1) // self.num_identities_per_batch
