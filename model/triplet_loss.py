@@ -44,8 +44,7 @@ class TripletLoss(nn.Module):
         # Normalize embeddings to unit sphere (L2 normalization)
         embeddings = F.normalize(embeddings, p=2, dim=1)
         
-        # Generate all valid triplets using online mining
-        triplets, mining_info = self.mine_triplets(embeddings, labels)
+        triplets, mining_info = self.mine_triplets(embeddings, labels) # Online mining
         
         if len(triplets) == 0:
             # No valid triplets found, return zero loss
@@ -63,7 +62,7 @@ class TripletLoss(nn.Module):
         pos_distances = torch.sum((anchor_embeddings - positive_embeddings) ** 2, dim=1)
         neg_distances = torch.sum((anchor_embeddings - negative_embeddings) ** 2, dim=1)
         
-        # Compute triplet loss
+        # Triplet loss
         losses = F.relu(pos_distances - neg_distances + self.margin)
         loss = torch.mean(losses)
         
@@ -126,7 +125,7 @@ class TripletLoss(nn.Module):
                     
                     # Find semi-hard negatives
                     negative_idx = self.find_semi_hard_negative(
-                        anchor_idx, positive_idx, ap_distance, distances, labels
+                        anchor_idx, ap_distance, distances, labels
                     )
                     
                     if negative_idx is not None:
@@ -144,9 +143,7 @@ class TripletLoss(nn.Module):
         
         return triplets, mining_stats
     
-    def find_semi_hard_negative(self, anchor_idx: int, positive_idx: int, 
-                                ap_distance: torch.Tensor, distances: torch.Tensor, 
-                                labels: torch.Tensor) -> Optional[int]:
+    def find_semi_hard_negative(self, anchor_idx: int, ap_distance: torch.Tensor, distances: torch.Tensor, labels: torch.Tensor) -> Optional[int]:
         """
         Find a semi-hard negative for the given anchor-positive pair.
         
@@ -154,7 +151,6 @@ class TripletLoss(nn.Module):
         
         Args:
             anchor_idx: Index of anchor
-            positive_idx: Index of positive  
             ap_distance: Distance between anchor and positive
             distances: Pairwise distance matrix
             labels: Identity labels
@@ -176,8 +172,7 @@ class TripletLoss(nn.Module):
         
         # Semi-hard condition: d(a,n) > d(a,p) and d(a,n) < d(a,p) + margin
         candidate_distances = anchor_distances[candidate_indices]
-        semi_hard_mask = (candidate_distances > ap_distance) & \
-                        (candidate_distances < ap_distance + self.margin)
+        semi_hard_mask = (candidate_distances > ap_distance) & (candidate_distances < ap_distance + self.margin)
         
         semi_hard_candidates = candidate_indices[semi_hard_mask]
         

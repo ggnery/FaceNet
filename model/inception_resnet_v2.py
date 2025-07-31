@@ -79,8 +79,8 @@ class Stem(nn.Module):
         )
         self.branch2_seq2 =nn.Sequential(
             Conv2dBatchNormalized(160, 64, kernel_size=1, device=device),
-            Conv2dBatchNormalized(64, 64, kernel_size=(7,1), device=device), # INVERT to (7,1)??
-            Conv2dBatchNormalized(64, 64, kernel_size=(1,7), device=device), # INVERT to (1,7)??
+            Conv2dBatchNormalized(64, 64, kernel_size=(7,1), device=device),
+            Conv2dBatchNormalized(64, 64, kernel_size=(1,7), device=device),
             Conv2dBatchNormalized(64, 96, kernel_size=3, padding="valid", device=device) 
         )
         
@@ -153,8 +153,8 @@ class InceptionResNetB(nn.Module):
         self.branch1 =  Conv2dBatchNormalized(in_channels, 192, kernel_size=1, device=device)
         self.branch2 = nn.Sequential(
             Conv2dBatchNormalized(in_channels, 128, kernel_size=1, device=device),
-            Conv2dBatchNormalized(128, 160, kernel_size=(1,7), device=device), # Swap to (7,1)???
-            Conv2dBatchNormalized(160, 192, kernel_size=(7,1), device=device) # Swap to (1,7)???
+            Conv2dBatchNormalized(128, 160, kernel_size=(1,7), device=device),
+            Conv2dBatchNormalized(160, 192, kernel_size=(7,1), device=device)
         )
         
         self.linear_conv = nn.Conv2d(384, in_channels, kernel_size=1, padding="same", bias=True, device=device)
