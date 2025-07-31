@@ -1,9 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
 from typing import Tuple, List, Optional
-import random
 from collections import defaultdict
 
 
