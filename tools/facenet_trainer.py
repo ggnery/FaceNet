@@ -105,11 +105,12 @@ class FaceNetTrainer:
                 val_loss = self.validate(val_dataset)
                 
             # Log progress
+            val_loss_str = f"{val_loss:.4f}" if val_loss is not None else "N/A"
             self.logger.info(
                 f"Epoch {epoch+1}/{num_epochs} - "
                 f"LR: {current_lr:.6f} - "
                 f"Train Loss: {train_loss:.4f} - "
-                f"Val Loss: {val_loss:.4f if val_loss else 'N/A'} - "
+                f"Val Loss: {val_loss_str} - "
                 f"Active Triplets: {train_stats['active_triplets_ratio']:.2%}"
             )
             
