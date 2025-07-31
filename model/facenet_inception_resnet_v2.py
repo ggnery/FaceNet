@@ -4,7 +4,7 @@ from .backbone.inception_resnet_v2 import InceptionResNetV2
 from .loss.triplet_loss import TripletLoss
 from typing import Optional, Tuple, Dict
 
-class FaceNet(nn.Module):
+class FaceNetInceptionResNetV2(nn.Module):
     """
     FaceNet implementation using InceptionResNetV2 backbone and TripletLoss.
     Follows the original FaceNet paper specifications.
@@ -20,7 +20,7 @@ class FaceNet(nn.Module):
             embedding_size: Size of face embeddings
             pretrained_inception: Path to pretrained InceptionResNetV2 weights
         """
-        super(FaceNet, self).__init__()
+        super(FaceNetInceptionResNetV2, self).__init__()
         
         # Initialize InceptionResNetV2 backbone
         self.backbone = InceptionResNetV2(device, embedding_size=embedding_size)
