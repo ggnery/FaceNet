@@ -83,8 +83,8 @@ class FaceNetTrainer:
             # Default schedule from paper
             lr_schedule = {
                 0: 0.05,
-                500: 0.01,  # After 500 epochs (~500 epochs)
-                1000: 0.001
+                300: 0.01,  # After 500 epochs (~500 epochs)
+                400: 0.001
             }
         
         # Training loop
@@ -189,8 +189,8 @@ class FaceNetTrainer:
         # Create validation batch sampler (smaller batches for validation)
         val_batch_sampler = FaceNetBatchSampler(
             val_dataset, 
-            faces_per_identity=10,  # Smaller for validation
-            num_identities_per_batch=20  # 200 total batch size
+            faces_per_identity=44,
+            num_identities_per_batch=4
         )
         
         val_loader = DataLoader(

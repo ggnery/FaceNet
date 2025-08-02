@@ -118,7 +118,7 @@ class InceptionResNetA(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         branch1 = self.branch1(x) # Output: 35x35x32
         branch2 = self.branch2(x) # Output: 35x35x32
-        branch3 = self.branch3(x) # Output: 35x35x32
+        branch3 = self.branch3(x) # Output: 35x35x64
         
         mixed = torch.cat([branch1, branch2, branch3], dim=1) # Output: 35x35x96
         linear_out = self.linear_conv(mixed) # Output: 35x35x384
