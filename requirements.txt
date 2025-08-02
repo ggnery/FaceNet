@@ -10,3 +10,8 @@ tqdm==4.67.1
 numpy==2.1.2
 matplotlib==3.10.3
 seaborn==0.13.2
+
+# Additional dependencies for LFW benchmark
+scikit-learn==1.7.1
+pandas==2.2.3
+Pillow==11.1.0
