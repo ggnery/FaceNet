@@ -350,6 +350,189 @@ class LFWBenchmark:
         
         plt.show()
     
+    def plot_prediction_examples(self, pairs_data: list, similarities: np.ndarray, 
+                                 labels: np.ndarray, metrics: dict, 
+                                 num_examples: int = 16, save_path: str = None):
+        """
+        Plot examples of correct and incorrect predictions with actual image pairs.
+        
+        Args:
+            pairs_data: List of image pairs
+            similarities: Array of similarity scores
+            labels: Array of ground truth labels
+            metrics: Computed metrics dictionary
+            num_examples: Number of examples to show (4 correct + 4 incorrect)
+            save_path: Path to save the plot (optional)
+        """
+        # Get predictions using optimal threshold
+        predictions = (similarities >= metrics['optimal_threshold']).astype(int)
+        
+        # Find correct and incorrect predictions
+        correct_mask = (predictions == labels)
+        incorrect_mask = ~correct_mask
+        
+        correct_indices = np.where(correct_mask)[0]
+        incorrect_indices = np.where(incorrect_mask)[0]
+        
+        # Select examples
+        num_correct = min(num_examples // 2, len(correct_indices))
+        num_incorrect = min(num_examples // 2, len(incorrect_indices))
+        
+        if num_correct == 0 or num_incorrect == 0:
+            print("Not enough correct or incorrect predictions to display examples")
+            return
+        
+        # Randomly select examples
+        np.random.seed(42)  # For reproducible results
+        selected_correct = np.random.choice(correct_indices, num_correct, replace=False)
+        selected_incorrect = np.random.choice(incorrect_indices, num_incorrect, replace=False)
+        
+        # Create figure
+        fig, axes = plt.subplots(2, num_examples // 2, figsize=(20, 10))
+        if num_examples // 2 == 1:
+            axes = axes.reshape(2, 1)
+        
+        # Plot correct predictions
+        for i, idx in enumerate(selected_correct):
+            person1, img1, person2, img2 = pairs_data[idx]
+            similarity = similarities[idx]
+            true_label = labels[idx]
+            pred_label = predictions[idx]
+            
+            try:
+                # Load images
+                image1_tensor = self._load_image(person1, img1)
+                image2_tensor = self._load_image(person2, img2)
+                
+                # Convert tensors back to PIL images for display
+                image1 = self._tensor_to_pil(image1_tensor.squeeze(0))
+                image2 = self._tensor_to_pil(image2_tensor.squeeze(0))
+                
+                # Create side-by-side image
+                combined_image = self._combine_images(image1, image2)
+                
+                axes[0, i].imshow(combined_image)
+                axes[0, i].axis('off')
+                
+                # Create title
+                actual = "Same" if true_label == 1 else "Different"
+                predicted = "Same" if pred_label == 1 else "Different"
+                title = (f"✓ CORRECT\n"
+                        f"Actual: {actual}\n"
+                        f"Predicted: {predicted}\n"
+                        f"Similarity: {similarity:.3f}")
+                axes[0, i].set_title(title, fontsize=10, color='green', weight='bold')
+                
+            except Exception as e:
+                axes[0, i].text(0.5, 0.5, f"Error loading\nimages: {str(e)}", 
+                               ha='center', va='center', transform=axes[0, i].transAxes)
+                axes[0, i].axis('off')
+        
+        # Plot incorrect predictions
+        for i, idx in enumerate(selected_incorrect):
+            person1, img1, person2, img2 = pairs_data[idx]
+            similarity = similarities[idx]
+            true_label = labels[idx]
+            pred_label = predictions[idx]
+            
+            try:
+                # Load images
+                image1_tensor = self._load_image(person1, img1)
+                image2_tensor = self._load_image(person2, img2)
+                
+                # Convert tensors back to PIL images for display
+                image1 = self._tensor_to_pil(image1_tensor.squeeze(0))
+                image2 = self._tensor_to_pil(image2_tensor.squeeze(0))
+                
+                # Create side-by-side image
+                combined_image = self._combine_images(image1, image2)
+                
+                axes[1, i].imshow(combined_image)
+                axes[1, i].axis('off')
+                
+                # Create title
+                actual = "Same" if true_label == 1 else "Different"
+                predicted = "Same" if pred_label == 1 else "Different"
+                title = (f"✗ INCORRECT\n"
+                        f"Actual: {actual}\n"
+                        f"Predicted: {predicted}\n"
+                        f"Similarity: {similarity:.3f}")
+                axes[1, i].set_title(title, fontsize=10, color='red', weight='bold')
+                
+            except Exception as e:
+                axes[1, i].text(0.5, 0.5, f"Error loading\nimages: {str(e)}", 
+                               ha='center', va='center', transform=axes[1, i].transAxes)
+                axes[1, i].axis('off')
+        
+        # Add row labels
+        fig.text(0.02, 0.75, 'CORRECT\nPREDICTIONS', rotation=90, fontsize=14, 
+                weight='bold', color='green', ha='center', va='center')
+        fig.text(0.02, 0.25, 'INCORRECT\nPREDICTIONS', rotation=90, fontsize=14, 
+                weight='bold', color='red', ha='center', va='center')
+        
+        plt.suptitle('Model Prediction Examples', fontsize=16, weight='bold', y=0.95)
+        plt.tight_layout()
+        plt.subplots_adjust(left=0.08, top=0.88)
+        
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            print(f"Prediction examples saved to {save_path}")
+        
+        plt.show()
+    
+    def _tensor_to_pil(self, tensor: torch.Tensor) -> Image.Image:
+        """
+        Convert normalized tensor back to PIL Image.
+        
+        Args:
+            tensor: Normalized image tensor
+            
+        Returns:
+            PIL Image
+        """
+        # Denormalize (reverse the normalization applied during preprocessing)
+        tensor = tensor * 0.5 + 0.5  # From [-1, 1] to [0, 1]
+        tensor = torch.clamp(tensor, 0, 1)
+        
+        # Convert to numpy and rearrange dimensions
+        numpy_image = tensor.permute(1, 2, 0).cpu().numpy()
+        
+        # Convert to PIL Image
+        pil_image = Image.fromarray((numpy_image * 255).astype(np.uint8))
+        return pil_image
+    
+    def _combine_images(self, image1: Image.Image, image2: Image.Image) -> Image.Image:
+        """
+        Combine two images side by side.
+        
+        Args:
+            image1: First image
+            image2: Second image
+            
+        Returns:
+            Combined PIL Image
+        """
+        # Resize images to same height
+        height = min(image1.height, image2.height)
+        aspect1 = image1.width / image1.height
+        aspect2 = image2.width / image2.height
+        
+        width1 = int(height * aspect1)
+        width2 = int(height * aspect2)
+        
+        image1 = image1.resize((width1, height), Image.Resampling.LANCZOS)
+        image2 = image2.resize((width2, height), Image.Resampling.LANCZOS)
+        
+        # Create combined image
+        total_width = width1 + width2 + 10  # 10px spacing
+        combined = Image.new('RGB', (total_width, height), color='white')
+        
+        # Paste images
+        combined.paste(image1, (0, 0))
+        combined.paste(image2, (width1 + 10, 0))
+        
+        return combined
+
     def run_benchmark(self, save_results: bool = True) -> dict:
         """
         Run complete LFW benchmark evaluation.
@@ -396,6 +579,31 @@ class LFWBenchmark:
             save_path = None
             
         self.plot_results(metrics, similarities, valid_labels, save_path)
+        
+        # Plot prediction examples
+        if save_results:
+            examples_save_path = Path('benchmark') / 'lfw_prediction_examples.png'
+        else:
+            examples_save_path = None
+            
+        # Filter pairs_data to match valid similarities (accounting for skipped pairs)
+        valid_pairs_data = []
+        valid_pairs_labels = []
+        pair_idx = 0
+        
+        for i, (person1, img1, person2, img2) in enumerate(pairs_data):
+            try:
+                # Try to load the images to see if this pair was processed
+                self._load_image(person1, img1)
+                self._load_image(person2, img2)
+                valid_pairs_data.append((person1, img1, person2, img2))
+                valid_pairs_labels.append(labels[i])
+                pair_idx += 1
+            except:
+                continue
+        
+        self.plot_prediction_examples(valid_pairs_data, similarities, valid_labels, 
+                                    metrics, save_path=examples_save_path)
         
         # Save detailed results
         if save_results:
