@@ -47,6 +47,8 @@ def main(args):
     print(f"  Embedding size: {args.embedding_size}")
     print(f"  Epochs: {args.num_epochs}")
     print(f"  Batch size: {args.faces_per_identity * args.num_identities_per_batch}")
+    print(f"  EMA decay: {args.ema_decay}")
+    print(f"  EMA enabled: True")
     
     # Create datasets with augmentation
     train_transforms = get_data_transforms()
@@ -62,17 +64,17 @@ def main(args):
     # Create model
     model = FaceNetInceptionResNetV2(device=device, embedding_size=args.embedding_size)
     
-    # Create trainer
-    trainer = FaceNetTrainer(model, device, checkpoint_dir)
+    # Create trainer with EMA
+    trainer = FaceNetTrainer(model, device, checkpoint_dir, ema_decay=args.ema_decay)
     
     # Resume from checkpoint if specified
     if args.resume:
         if not os.path.exists(args.resume):
             raise ValueError(f"Checkpoint file does not exist: {args.resume}")
         print(f"Resuming training from: {args.resume}")
-        checkpoint = torch.load(args.resume, map_location=device)
-        model.load_state_dict(checkpoint['model_state_dict'])
+        checkpoint = trainer.load_checkpoint(args.resume)
         print(f"Loaded checkpoint from epoch {checkpoint['epoch']}")
+        print("EMA state loaded from checkpoint")
     
     # Train model
     print("Starting training...")
@@ -108,6 +110,8 @@ if __name__ == "__main__":
                         help='Number of faces per identity per batch (paper uses ~40)')
     parser.add_argument('--num_identities_per_batch', type=int, default=45,
                         help='Number of identities per batch (45*40=1800 total batch size)')
+    parser.add_argument('--ema_decay', type=float, default=0.9999,
+                        help='EMA decay rate for model parameters (default: 0.9999)')
     
     args = parser.parse_args()
     main(args)

@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 from dataset import VGGFace2Dataset, FaceNetBatchSampler
 from model import FaceNetInceptionResNetV2
+from .optmizations.ema import ExponentialMovingAverage
 
 class FaceNetTrainer:
     """
@@ -16,19 +17,24 @@ class FaceNetTrainer:
     """
     
     def __init__(self, model: FaceNetInceptionResNetV2, device: torch.device, 
-                 checkpoint_dir: str = './checkpoints'):
+                 checkpoint_dir: str = './checkpoints', 
+                 ema_decay: float = 0.9999):
         """
-        Initialize trainer.
+        Initialize trainer with EMA optimization.
         
         Args:
             model: FaceNet model
             device: Device to train on
             checkpoint_dir: Directory to save checkpoints
+            ema_decay: EMA decay rate (default: 0.9999)
         """
         self.model = model
         self.device = device
         self.checkpoint_dir = Path(checkpoint_dir)
         self.checkpoint_dir.mkdir(exist_ok=True)
+        
+        # Initialize EMA
+        self.ema = ExponentialMovingAverage(model, decay=ema_decay, device=device)
         
         # Setup logging
         logging.basicConfig(level=logging.INFO)
@@ -154,6 +160,9 @@ class FaceNetTrainer:
             loss.backward()
             optimizer.step()
             
+            # Update EMA after optimizer step
+            self.ema.update(self.model)
+            
             # Update statistics
             batch_size = images.size(0)
             total_loss += loss.item() * batch_size
@@ -187,48 +196,53 @@ class FaceNetTrainer:
         return avg_loss, dict(epoch_stats)
     
     def validate(self, val_dataset: VGGFace2Dataset) -> float:
-        """Validate the model using triplet-aware sampling."""
+        """Validate the model using EMA parameters and triplet-aware sampling."""
         self.model.eval()
         
-        # Create validation batch sampler (smaller batches for validation)
-        val_batch_sampler = FaceNetBatchSampler(
-            val_dataset, 
-            faces_per_identity=44,
-            num_identities_per_batch=4
-        )
+        # Apply EMA parameters for validation
+        self.ema.apply_shadow(self.model)
         
-        val_loader = DataLoader(
-            val_dataset,
-            batch_sampler=val_batch_sampler,
-            num_workers=4,
-            pin_memory=True
-        )
-        
-        total_loss = 0
-        num_batches = 0
-        
-        with torch.no_grad():
-            for images, labels in val_loader:
-                images = images.to(self.device)
-                labels = labels.to(self.device)
-                
-                loss, _ = self.model.compute_loss(images, labels)
-                
-                total_loss += loss.item()
-                num_batches += 1
-                
-                # Limit validation to a few batches for speed
-                if num_batches >= 10:
-                    break
+        try:
+            # Create validation batch sampler (smaller batches for validation)
+            val_batch_sampler = FaceNetBatchSampler(
+                val_dataset, 
+                faces_per_identity=44,
+                num_identities_per_batch=4
+            )
+            
+            val_loader = DataLoader(
+                val_dataset,
+                batch_sampler=val_batch_sampler,
+                num_workers=4,
+                pin_memory=True
+            )
+            
+            total_loss = 0
+            num_batches = 0
+            
+            with torch.no_grad():
+                for images, labels in val_loader:
+                    images = images.to(self.device)
+                    labels = labels.to(self.device)
+                    
+                    loss, _ = self.model.compute_loss(images, labels)
+                    
+                    total_loss += loss.item()
+                    num_batches += 1
+                        
+        finally:
+            # Always restore original parameters
+            self.ema.restore(self.model)
                 
         return total_loss / num_batches if num_batches > 0 else 0.0
             
     def save_checkpoint(self, epoch: int, optimizer: optim.Optimizer, 
                        scheduler: optim.lr_scheduler.StepLR, loss: float):
-        """Save model checkpoint."""
+        """Save model checkpoint with EMA state."""
         checkpoint = {
             'epoch': epoch,
             'model_state_dict': self.model.state_dict(),
+            'ema_state_dict': self.ema.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'scheduler_state_dict': scheduler.state_dict(),
             'loss': loss,
@@ -243,3 +257,29 @@ class FaceNetTrainer:
         history_path = self.checkpoint_dir / 'training_history.json'
         with open(history_path, 'w') as f:
             json.dump(self.history, f, indent=2)
+            
+    def load_checkpoint(self, checkpoint_path: str):
+        """
+        Load model checkpoint with EMA state.
+        
+        Args:
+            checkpoint_path: Path to checkpoint file
+        """
+        checkpoint = torch.load(checkpoint_path, map_location=self.device)
+        
+        # Load model state
+        self.model.load_state_dict(checkpoint['model_state_dict'])
+        
+        # Load EMA state if available
+        if 'ema_state_dict' in checkpoint:
+            self.ema.load_state_dict(checkpoint['ema_state_dict'])
+        else:
+            self.logger.warning("No EMA state found in checkpoint, initializing EMA from current model")
+            # Re-initialize EMA from current model if not in checkpoint
+            self.ema = ExponentialMovingAverage(self.model, decay=self.ema.decay, device=self.device)
+        
+        # Load training history if available
+        if 'history' in checkpoint:
+            self.history = checkpoint['history']
+            
+        return checkpoint
