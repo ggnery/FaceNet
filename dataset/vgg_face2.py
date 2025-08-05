@@ -5,6 +5,9 @@ import random
 from collections import defaultdict
 from PIL import Image
 from pathlib import Path
+from mtcnn import MTCNN
+import torch
+import numpy as np
 
 class VGGFace2Dataset(Dataset):
     """
@@ -24,6 +27,11 @@ class VGGFace2Dataset(Dataset):
         self.root_dir = Path(root_dir)
         self.split = split
         self.data_dir = self.root_dir / split
+        
+        if torch.cuda.is_available():
+            self.mtcnn = MTCNN(device='GPU:0')
+        else:
+            self.mtcnn = MTCNN(device='CPU:0')
         
         # Default FaceNet preprocessing
         if transform is None:
@@ -48,8 +56,6 @@ class VGGFace2Dataset(Dataset):
         identity_folders = sorted([d for d in self.data_dir.iterdir() if d.is_dir()])
         
         for label_idx, identity_folder in enumerate(identity_folders):
-            identity_id = identity_folder.name
-            
             # Get all images for this identity
             image_files = list(identity_folder.glob('*.jpg')) + list(identity_folder.glob('*.png'))
             
@@ -70,9 +76,26 @@ class VGGFace2Dataset(Dataset):
         
         # Load and transform image
         image = Image.open(img_path).convert('RGB')
+         
+        faces = self.mtcnn.detect_faces(np.array(image, dtype=np.uint8))
+
+        # If no faces detected, use the whole image
+        if faces:
+            # Use the face with highest confidence
+            face = max(faces, key=lambda x: x['confidence'])
+            x, y, w, h = face['box']
+            
+            # Ensure coordinates are within image bounds
+            img_width, img_height = image.size
+            x = max(0, x)
+            y = max(0, y)
+            w = min(w, img_width - x)
+            h = min(h, img_height - y)
+            image = image.crop((x, y, x + w, y + h))
+        
         if self.transform:
             image = self.transform(image)
-            
+
         return image, label
 
 

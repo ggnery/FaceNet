@@ -7,17 +7,6 @@ from dataset import VGGFace2Dataset
 from model import FaceNetInceptionResNetV2
 from tools import FaceNetTrainer
 
-def get_data_transforms():
-    """Get data augmentation transforms following FaceNet paper."""
-    return transforms.Compose([
-        transforms.Resize((299, 299)),  # InceptionResNetV2 input size
-        transforms.RandomHorizontalFlip(p=0.5),
-        transforms.RandomRotation(degrees=10),
-        transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
-    ])
-
 def main(args):
     """Main training script."""
     # Configuration
@@ -51,7 +40,15 @@ def main(args):
     print(f"  EMA enabled: True")
     
     # Create datasets with augmentation
-    train_transforms = get_data_transforms()
+    train_transforms = transforms.Compose([
+        transforms.Resize((299, 299)),  # InceptionResNetV2 input size
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.RandomRotation(degrees=10),
+        transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+    ])
+    
     val_transforms = transforms.Compose([
         transforms.Resize((299, 299)),
         transforms.ToTensor(),
