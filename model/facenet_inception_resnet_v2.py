@@ -3,6 +3,7 @@ from torch import nn
 from .backbone.inception_resnet_v2 import InceptionResNetV2
 from .loss.triplet_loss import TripletLoss
 from typing import Optional, Tuple, Dict
+import torch.nn.functional as F
 
 class FaceNetInceptionResNetV2(nn.Module):
     """
@@ -36,8 +37,11 @@ class FaceNetInceptionResNetV2(nn.Module):
         self.to(device)
         
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass through the network. Embeddings are NOT normalized"""
-        return self.backbone(x)
+        """Forward pass through the network. Embeddings are normalized"""
+        
+        # Normalize embeddings to unit sphere (L2 normalization)
+        embeddings = self.backbone(x)
+        return F.normalize(embeddings, p=2, dim=1)
     
     def compute_loss(self, images: torch.Tensor, labels: torch.Tensor) -> Tuple[torch.Tensor, Dict]:
         """

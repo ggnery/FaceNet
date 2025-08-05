@@ -39,8 +39,7 @@ class TripletLoss(nn.Module):
         Returns:
             Tuple of (loss, info_dict) where info_dict contains mining statistics
         """
-        # Normalize embeddings to unit sphere (L2 normalization)
-        embeddings = F.normalize(embeddings, p=2, dim=1)
+        
         
         triplets, mining_info = self.mine_triplets(embeddings, labels) # Online mining
         
