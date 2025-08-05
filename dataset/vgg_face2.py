@@ -5,7 +5,7 @@ import random
 from collections import defaultdict
 from PIL import Image
 from pathlib import Path
-from mtcnn import MTCNN
+from model import MTCNN
 import torch
 import numpy as np
 
@@ -15,7 +15,10 @@ class VGGFace2Dataset(Dataset):
     """
     
     def __init__(self, root_dir: str, split: str = 'train', 
-                 transform: Optional[transforms.Compose] = None):
+                 transform: Optional[transforms.Compose] = None, 
+                 device: torch.device = None,
+                 mtcnn_weights: str = None,
+):
         """
         Initialize VGGFace2 dataset.
         
@@ -28,10 +31,7 @@ class VGGFace2Dataset(Dataset):
         self.split = split
         self.data_dir = self.root_dir / split
         
-        if torch.cuda.is_available():
-            self.mtcnn = MTCNN(device='GPU:0')
-        else:
-            self.mtcnn = MTCNN(device='CPU:0')
+        self.mtcnn = MTCNN(pretrained_folder=mtcnn_weights, device=device)
         
         # Default FaceNet preprocessing
         if transform is None:
@@ -77,21 +77,23 @@ class VGGFace2Dataset(Dataset):
         # Load and transform image
         image = Image.open(img_path).convert('RGB')
          
-        faces = self.mtcnn.detect_faces(np.array(image, dtype=np.uint8))
-
+        boxes, probs = self.mtcnn.detect(image)
+        
         # If no faces detected, use the whole image
-        if faces:
+        if boxes is not None and len(boxes) > 0:
             # Use the face with highest confidence
-            face = max(faces, key=lambda x: x['confidence'])
-            x, y, w, h = face['box']
+            best_box_idx = np.argmax(probs)
+            x1, y1, x2, y2 = boxes[best_box_idx]
             
             # Ensure coordinates are within image bounds
             img_width, img_height = image.size
-            x = max(0, x)
-            y = max(0, y)
-            w = min(w, img_width - x)
-            h = min(h, img_height - y)
-            image = image.crop((x, y, x + w, y + h))
+            x1 = max(0, int(x1))
+            y1 = max(0, int(y1))
+            x2 = min(img_width, int(x2))
+            y2 = min(img_height, int(y2))
+            
+            # Crop the detected face region
+            image = image.crop((x1, y1, x2, y2))
         
         if self.transform:
             image = self.transform(image)
