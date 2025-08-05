@@ -212,9 +212,9 @@ class MTCNN(nn.Module):
         self.selection_method = selection_method
 
         if pretrained_folder:
-            self.pnet = PNet(os.path.join(pretrained_folder, "pnet.pt"))
-            self.rnet = RNet(os.path.join(pretrained_folder, "rnet.pt"))
-            self.onet = ONet(os.path.join(pretrained_folder, "onet.pt"))
+            self.pnet = PNet(os.path.join(pretrained_folder, "pnet.pth"))
+            self.rnet = RNet(os.path.join(pretrained_folder, "rnet.pth"))
+            self.onet = ONet(os.path.join(pretrained_folder, "onet.pth"))
         else:
             self.pnet = PNet()
             self.rnet = RNet()
