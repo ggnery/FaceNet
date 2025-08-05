@@ -1,6 +1,7 @@
 data/
 nohup.out
 ada_grad/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
