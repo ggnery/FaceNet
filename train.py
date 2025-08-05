@@ -102,8 +102,8 @@ if __name__ == "__main__":
                         help='Size of face embeddings (paper uses 512)')
     parser.add_argument('--num_epochs', type=int, default=1000,
                         help='Number of training epochs (paper uses 1000+)')
-    parser.add_argument('--learning_rate', type=float, default=0.05,
-                        help='Initial learning rate (paper uses 0.05)')
+    parser.add_argument('--learning_rate', type=float, default=0.045,
+                        help='Initial learning rate (InceptionResNetV2 paper uses 0.045)')
     parser.add_argument('--faces_per_identity', type=int, default=40,
                         help='Number of faces per identity per batch (paper uses ~40)')
     parser.add_argument('--num_identities_per_batch', type=int, default=45,

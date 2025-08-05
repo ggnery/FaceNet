@@ -44,8 +44,7 @@ class FaceNetTrainer:
     def train(self, train_dataset: VGGFace2Dataset, 
               val_dataset: Optional[VGGFace2Dataset] = None,
               num_epochs: int = 100,
-              learning_rate: float = 0.05,
-              lr_schedule: Optional[Dict[int, float]] = None,
+              learning_rate: float = 0.045,
               faces_per_identity: int = 40,
               num_identities_per_batch: int = 45):
         """
@@ -55,8 +54,7 @@ class FaceNetTrainer:
             train_dataset: Training dataset
             val_dataset: Validation dataset
             num_epochs: Number of training epochs
-            learning_rate: Initial learning rate (paper starts with 0.05)
-            lr_schedule: Dictionary mapping epoch to learning rate
+            learning_rate: Initial learning rate (InceptionResNetV2 paper uses 0.045)
             faces_per_identity: Faces per identity per batch
             num_identities_per_batch: Number of identities per batch
         """
@@ -75,17 +73,20 @@ class FaceNetTrainer:
             pin_memory=True
         )
         
-        # Optimizer (paper uses AdaGrad)
-        optimizer = optim.Adagrad(self.model.parameters(), lr=learning_rate)
+        # Optimizer (InceptionResNetV2 paper uses RMSProp)
+        optimizer = optim.RMSprop(
+            self.model.parameters(), 
+            lr=learning_rate,
+            alpha=0.9,  # decay
+            eps=1.0     # epsilon
+        )
         
-        # Learning rate schedule
-        if lr_schedule is None:
-            # Default schedule from paper
-            lr_schedule = {
-                0: 0.05,
-                300: 0.01,  # After 500 epochs (~500 epochs)
-                400: 0.001
-            }
+        # Learning rate scheduler (InceptionResNetV2: exponential decay every 2 epochs)
+        scheduler = optim.lr_scheduler.StepLR(
+            optimizer, 
+            step_size=2,  # every 2 epochs
+            gamma=0.94    # exponential decay rate
+        )
         
         # Training loop
         self.logger.info(f"Starting training for {num_epochs} epochs")
@@ -93,11 +94,14 @@ class FaceNetTrainer:
                         f"({faces_per_identity} faces x {num_identities_per_batch} identities)")
         
         for epoch in range(num_epochs):
-            # Adjust learning rate
-            current_lr = self.adjust_learning_rate(optimizer, epoch, lr_schedule)
+            # Get current learning rate before step
+            current_lr = optimizer.param_groups[0]['lr']
             
             # Train one epoch
             train_loss, train_stats = self.train_epoch(train_loader, optimizer, epoch)
+            
+            # Step the learning rate scheduler (after training epoch)
+            scheduler.step()
             
             # Validation
             val_loss = None
@@ -116,7 +120,7 @@ class FaceNetTrainer:
             
             # Save checkpoint
             if (epoch + 1) % 10 == 0:
-                self.save_checkpoint(epoch, optimizer, train_loss)
+                self.save_checkpoint(epoch, optimizer, scheduler, train_loss)
                 
             # Update history
             self.history['train_loss'].append(train_loss)
@@ -218,34 +222,15 @@ class FaceNetTrainer:
                     break
                 
         return total_loss / num_batches if num_batches > 0 else 0.0
-    
-    def adjust_learning_rate(self, optimizer: optim.Optimizer, epoch: int, 
-                             lr_schedule: Dict[int, float]) -> float:
-        """Adjust learning rate based on schedule.
-        
-        Returns:
-            The current learning rate after adjustment
-        """        
-        current_lr = optimizer.param_groups[0]['lr']  # Get current LR as default
-        
-        # Find the appropriate learning rate for current epoch
-        for epoch_threshold, new_lr in sorted(lr_schedule.items(), reverse=True):
-            if epoch >= epoch_threshold:
-                current_lr = new_lr
-                break
-                
-        # Apply the learning rate to all parameter groups
-        for param_group in optimizer.param_groups:
-            param_group['lr'] = current_lr
             
-        return current_lr
-            
-    def save_checkpoint(self, epoch: int, optimizer: optim.Optimizer, loss: float):
+    def save_checkpoint(self, epoch: int, optimizer: optim.Optimizer, 
+                       scheduler: optim.lr_scheduler.StepLR, loss: float):
         """Save model checkpoint."""
         checkpoint = {
             'epoch': epoch,
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
+            'scheduler_state_dict': scheduler.state_dict(),
             'loss': loss,
             'history': self.history
         }
