@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 FaceNet Training Data Visualization Script
 

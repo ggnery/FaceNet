@@ -100,17 +100,14 @@ class FaceNetTrainer:
                         f"({faces_per_identity} faces x {num_identities_per_batch} identities)")
         
         for epoch in range(num_epochs):
-            # Get current learning rate before step
             current_lr = optimizer.param_groups[0]['lr']
             
             # Train one epoch
             train_loss, train_stats = self.train_epoch(train_loader, optimizer, epoch)
             
-            # Step the learning rate scheduler (after training epoch)
             scheduler.step()
             
             # Validation
-            val_loss = None
             if val_dataset:
                 val_loss = self.validate(val_dataset)
                 
@@ -152,7 +149,7 @@ class FaceNetTrainer:
             optimizer.zero_grad()
             loss, info = self.model.compute_loss(images, labels)
             
-            # Skip batch if no valid triplets found (optimization)
+            # Skip batch if no valid triplets found
             if loss.item() == 0.0 and info.get('total_triplets', 0) == 0:
                 continue
             
@@ -178,7 +175,7 @@ class FaceNetTrainer:
                 'active': f"{info.get('active_triplets', 0)}/{info.get('total_triplets', 1)}"
             })
             
-        # Compute epoch statistics
+        # epoch statistics
         avg_loss = total_loss / total_samples
         num_batches = len(train_loader)
         
