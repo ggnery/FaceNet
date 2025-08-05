@@ -75,7 +75,7 @@ class FaceNetTrainer:
         train_loader = DataLoader(
             train_dataset,
             batch_sampler=batch_sampler,
-            num_workers=8,
+            num_workers=0,
             pin_memory=True
         )
         
@@ -203,14 +203,14 @@ class FaceNetTrainer:
             # Create validation batch sampler (smaller batches for validation)
             val_batch_sampler = FaceNetBatchSampler(
                 val_dataset, 
-                faces_per_identity=44,
+                faces_per_identity=43,
                 num_identities_per_batch=4
             )
             
             val_loader = DataLoader(
                 val_dataset,
                 batch_sampler=val_batch_sampler,
-                num_workers=4,
+                num_workers=0,
                 pin_memory=True
             )
             
