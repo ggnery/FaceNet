@@ -1,3 +1,3 @@
 from .facenet_trainer import FaceNetTrainer
-
-__all__ = ["FaceNetTrainer"]
+from .optmizations.ema import ExponentialMovingAverage
+__all__ = ["FaceNetTrainer", "ExponentialMovingAverage"]
