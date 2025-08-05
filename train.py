@@ -5,6 +5,7 @@ from pathlib import Path
 import torchvision.transforms as transforms
 from dataset import VGGFace2Dataset
 from model import FaceNetInceptionResNetV2
+from model import MTCNN
 from tools import FaceNetTrainer
 
 def main(args):
@@ -55,8 +56,10 @@ def main(args):
         transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
     ])
     
-    train_dataset = VGGFace2Dataset(args.data_root, split='train', transform=train_transforms, mtcnn_weights=args.mtcnn_weights, device=device)
-    val_dataset = VGGFace2Dataset(args.data_root, split='val', transform=val_transforms, mtcnn_weights=args.mtcnn_weights, device=device) if val_dir.exists() else None
+    mtcnn = MTCNN(pretrained_folder=args.mtcnn_weights, device=device)
+ 
+    train_dataset = VGGFace2Dataset(args.data_root, split='train', transform=train_transforms, mtcnn_model=mtcnn, device=device)
+    val_dataset = VGGFace2Dataset(args.data_root, split='val', transform=val_transforms, mtcnn_model=mtcnn, device=device) if val_dir.exists() else None
     
     # Create model
     model = FaceNetInceptionResNetV2(device=device, embedding_size=args.embedding_size)

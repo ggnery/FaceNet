@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 from dataset import VGGFace2Dataset, FaceNetBatchSampler
 from model import FaceNetInceptionResNetV2
-from .optmizations.ema import ExponentialMovingAverage
+from model import ExponentialMovingAverage
 
 class FaceNetTrainer:
     """

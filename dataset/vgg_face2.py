@@ -17,7 +17,7 @@ class VGGFace2Dataset(Dataset):
     def __init__(self, root_dir: str, split: str = 'train', 
                  transform: Optional[transforms.Compose] = None, 
                  device: torch.device = None,
-                 mtcnn_weights: str = None,
+                 mtcnn_model: MTCNN = None,
 ):
         """
         Initialize VGGFace2 dataset.
@@ -31,7 +31,7 @@ class VGGFace2Dataset(Dataset):
         self.split = split
         self.data_dir = self.root_dir / split
         
-        self.mtcnn = MTCNN(pretrained_folder=mtcnn_weights, device=device)
+        self.mtcnn = mtcnn_model
         
         # Default FaceNet preprocessing
         if transform is None:
