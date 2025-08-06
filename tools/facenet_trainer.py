@@ -79,19 +79,17 @@ class FaceNetTrainer:
             pin_memory=True
         )
         
-        # Optimizer (InceptionResNetV2 paper uses RMSProp)
-        optimizer = optim.RMSprop(
+        # Optimizer 
+        optimizer = optim.Adam(
             self.model.parameters(), 
             lr=learning_rate,
-            alpha=0.9,  # decay
-            eps=1.0     # epsilon
         )
         
-        # Learning rate scheduler (InceptionResNetV2: exponential decay every 2 epochs)
-        scheduler = optim.lr_scheduler.StepLR(
+        # Learning rate scheduler 
+        scheduler = optim.lr_scheduler.MultiStepLR(
             optimizer, 
-            step_size=2,  # every 2 epochs
-            gamma=0.94    # exponential decay rate
+            milestones=[500, 1000],  
+            gamma=0.5  
         )
         
         # Training loop
