@@ -14,15 +14,13 @@ from collections import Counter
 import time
 from PIL import Image
 
-def test_dataset_initialization(dataset_path, split='train', mtcnn_weights=None):
+def test_dataset_initialization(dataset_path, split='train'):
     """Test basic dataset initialization and structure."""
     print("=" * 50)
     print("Testing Dataset Initialization")
     print("=" * 50)
     print(f"Using dataset path: {dataset_path}")
     print(f"Testing split: {split}")
-    if mtcnn_weights:
-        print(f"Using MTCNN weights: {mtcnn_weights}")
     
     # Test if dataset path exists
     if not Path(dataset_path).exists():
@@ -31,7 +29,7 @@ def test_dataset_initialization(dataset_path, split='train', mtcnn_weights=None)
         
     # Test dataset initialization
     try:
-        dataset = VGGFace2Dataset(dataset_path, split=split, mtcnn_weights=mtcnn_weights)
+        dataset = VGGFace2Dataset(dataset_path, split=split)
         print(f"[PASS] {split.capitalize()} dataset initialized successfully")
         print(f"   - Total samples: {len(dataset)}")
         print(f"   - Number of identities: {dataset.num_identities}")
@@ -45,14 +43,14 @@ def test_dataset_initialization(dataset_path, split='train', mtcnn_weights=None)
         print(f"[ERROR] Failed to initialize dataset: {e}")
         return False
 
-def test_dataset_loading(dataset_path, split='train', mtcnn_weights=None):
+def test_dataset_loading(dataset_path, split='train'):
     """Test individual sample loading and preprocessing."""
     print("\n" + "=" * 50)
     print("Testing Dataset Loading")
     print("=" * 50)
     
     try:
-        dataset = VGGFace2Dataset(dataset_path, split=split, mtcnn_weights=mtcnn_weights)
+        dataset = VGGFace2Dataset(dataset_path, split=split)
         
         # Test loading first few samples
         for i in range(min(5, len(dataset))):
@@ -81,50 +79,14 @@ def test_dataset_loading(dataset_path, split='train', mtcnn_weights=None):
         print(f"[ERROR] Failed in dataset loading test: {e}")
         return False
 
-def test_face_detection(dataset_path, split='train', mtcnn_weights=None):
-    """Test face detection functionality."""
-    print("\n" + "=" * 50)
-    print("Testing Face Detection")
-    print("=" * 50)
-    
-    try:      
-        dataset = VGGFace2Dataset(dataset_path, split=split, mtcnn_weights=mtcnn_weights)
-        
-        # Test a few samples to see face detection results
-        print("Testing face detection on sample images...")
-        detection_stats = {'detected': 0, 'not_detected': 0}
-        
-        for i in range(min(10, len(dataset))):
-            img_path, _ = dataset.samples[i]
-            
-            # Load original image
-            original_image = Image.open(img_path).convert('RGB')
-            boxes, probs = dataset.mtcnn.detect(original_image)
-            
-            if boxes is not None and len(boxes) > 0:
-                detection_stats['detected'] += 1
-                confidence = max(probs)
-                print(f"[PASS] Sample {i}: Face detected (confidence: {confidence:.3f})")
-            else:
-                detection_stats['not_detected'] += 1
-                print(f"[WARN] Sample {i}: No face detected")
-        
-        detection_rate = detection_stats['detected'] / (detection_stats['detected'] + detection_stats['not_detected'])
-        print(f"\nFace detection rate: {detection_rate:.2%}")
-        
-        return True
-    except Exception as e:
-        print(f"[ERROR] Failed in face detection test: {e}")
-        return False
-
-def test_batch_sampler(dataset_path, split='train', mtcnn_weights=None):
+def test_batch_sampler(dataset_path, split='train'):
     """Test the FaceNet batch sampler."""
     print("\n" + "=" * 50)
     print("Testing Batch Sampler")
     print("=" * 50)
     
     try:
-        dataset = VGGFace2Dataset(dataset_path, split=split, mtcnn_weights=mtcnn_weights)
+        dataset = VGGFace2Dataset(dataset_path, split=split)
         
         # Create batch sampler
         sampler = FaceNetBatchSampler(dataset, faces_per_identity=5, num_identities_per_batch=10)
@@ -157,14 +119,14 @@ def test_batch_sampler(dataset_path, split='train', mtcnn_weights=None):
         print(f"[ERROR] Failed in batch sampler test: {e}")
         return False
 
-def test_data_distribution(dataset_path, split='train', mtcnn_weights=None):
+def test_data_distribution(dataset_path, split='train'):
     """Analyze the distribution of data across identities."""
     print("\n" + "=" * 50)
     print("Testing Data Distribution")
     print("=" * 50)
     
     try:
-        dataset = VGGFace2Dataset(dataset_path, split=split, mtcnn_weights=mtcnn_weights)
+        dataset = VGGFace2Dataset(dataset_path, split=split)
         
         # Analyze samples per identity
         samples_per_identity = [len(indices) for indices in dataset.label_to_indices.values()]
@@ -195,14 +157,14 @@ def test_data_distribution(dataset_path, split='train', mtcnn_weights=None):
         print(f"[ERROR] Failed in data distribution test: {e}")
         return False
 
-def test_performance(dataset_path, split='train', mtcnn_weights=None):
+def test_performance(dataset_path, split='train'):
     """Test dataset loading performance."""
     print("\n" + "=" * 50)
     print("Testing Performance")
     print("=" * 50)
     
     try:
-        dataset = VGGFace2Dataset(dataset_path, split=split, mtcnn_weights=mtcnn_weights)
+        dataset = VGGFace2Dataset(dataset_path, split=split)
         
         # Test loading speed
         num_samples = min(50, len(dataset))
@@ -222,14 +184,14 @@ def test_performance(dataset_path, split='train', mtcnn_weights=None):
         print(f"[ERROR] Failed in performance test: {e}")
         return False
 
-def show_image_samples(dataset_path, split='train', num_samples=8, mtcnn_weights=None):
+def show_image_samples(dataset_path, split='train', num_samples=8):
     """Display sample images from the dataset with metadata."""
     print("\n" + "=" * 50)
     print("Showing Image Samples")
     print("=" * 50)
     
     try:
-        dataset = VGGFace2Dataset(dataset_path, split=split, mtcnn_weights=mtcnn_weights)
+        dataset = VGGFace2Dataset(dataset_path, split=split)
         
         # Select random samples
         sample_indices = np.random.choice(len(dataset), min(num_samples, len(dataset)), replace=False)
@@ -269,17 +231,6 @@ def show_image_samples(dataset_path, split='train', num_samples=8, mtcnn_weights
             print(f"   - Processed shape: {image.shape}")
             print(f"   - Value range: [{image.min().item():.3f}, {image.max().item():.3f}]")
             
-            # Test face detection on original image
-            try:
-                boxes, probs = dataset.mtcnn.detect(original_image)
-                if boxes is not None and len(boxes) > 0:
-                    best_confidence = max(probs)
-                    print(f"   - Face detected: confidence={best_confidence:.3f}")
-                else:
-                    print(f"   - No face detected")
-            except Exception as e:
-                print(f"   - Face detection error: {e}")
-            print()
         
         # Hide unused subplots
         for i in range(len(sample_indices), len(axes)):
@@ -295,7 +246,7 @@ def show_image_samples(dataset_path, split='train', num_samples=8, mtcnn_weights
         print(f"[ERROR] Failed to show image samples: {e}")
         return False
 
-def run_all_tests(dataset_path, split='train', mtcnn_weights=None):
+def run_all_tests(dataset_path, split='train'):
     """Run all dataset tests."""
     print("Starting Dataset Debug Tests")
     print("=" * 60)
@@ -303,7 +254,6 @@ def run_all_tests(dataset_path, split='train', mtcnn_weights=None):
     tests = [
         test_dataset_initialization,
         test_dataset_loading,
-        test_face_detection,
         test_batch_sampler,
         test_data_distribution,
         test_performance,
@@ -313,7 +263,7 @@ def run_all_tests(dataset_path, split='train', mtcnn_weights=None):
     results = []
     for test_func in tests:
         try:
-            result = test_func(dataset_path=dataset_path, split=split, mtcnn_weights=mtcnn_weights)
+            result = test_func(dataset_path=dataset_path, split=split)
             results.append(result)
         except Exception as e:
             print(f"[ERROR] Test {test_func.__name__} crashed: {e}")
@@ -347,9 +297,6 @@ def main():
                        default='train',
                        choices=['train', 'test'],
                        help='Dataset split to test (default: train)')
-    parser.add_argument('--mtcnn-weights', 
-                       default=None,
-                       help='Path to MTCNN pretrained weights folder')
     parser.add_argument('--show-samples', 
                        action='store_true',
                        help='Only show image samples without running other tests')
@@ -367,15 +314,13 @@ def main():
     
     print(f"Testing dataset at: {args.dataset_path}")
     print(f"Split: {args.split}")
-    if args.mtcnn_weights:
-        print(f"MTCNN weights: {args.mtcnn_weights}")
     
     if args.show_samples:
         # Only show image samples
-        show_image_samples(args.dataset_path, args.split, args.num_samples, args.mtcnn_weights)
+        show_image_samples(args.dataset_path, args.split, args.num_samples)
     else:
         # Run all tests
-        run_all_tests(args.dataset_path, args.split, args.mtcnn_weights)
+        run_all_tests(args.dataset_path, args.split)
 
 if __name__ == "__main__":
     main()

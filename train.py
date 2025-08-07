@@ -5,7 +5,6 @@ from pathlib import Path
 import torchvision.transforms as transforms
 from dataset import VGGFace2Dataset
 from model import FaceNetInceptionResNetV2
-from model import MTCNN
 from tools import FaceNetTrainer
 
 def main(args):
@@ -55,11 +54,9 @@ def main(args):
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
     ])
-    
-    mtcnn = MTCNN(pretrained_folder=args.mtcnn_weights, device=device)
- 
-    train_dataset = VGGFace2Dataset(args.data_root, split='train', transform=train_transforms, mtcnn_model=mtcnn, device=device)
-    val_dataset = VGGFace2Dataset(args.data_root, split='val', transform=val_transforms, mtcnn_model=mtcnn, device=device) if val_dir.exists() else None
+     
+    train_dataset = VGGFace2Dataset(args.data_root, split='train', transform=train_transforms)
+    val_dataset = VGGFace2Dataset(args.data_root, split='val', transform=val_transforms) if val_dir.exists() else None
     
     # Create model
     model = FaceNetInceptionResNetV2(device=device, embedding_size=args.embedding_size)
@@ -112,7 +109,6 @@ if __name__ == "__main__":
                         help='Number of identities per batch (45*40=1800 total batch size)')
     parser.add_argument('--ema_decay', type=float, default=0.9999,
                         help='EMA decay rate for model parameters (default: 0.9999)')
-    parser.add_argument('--mtcnn_weights', default='./checkpoints/mtcnn', help='Path to MTCNN pretrained weights folder')
     
     args = parser.parse_args()
     main(args)

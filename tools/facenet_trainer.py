@@ -75,7 +75,7 @@ class FaceNetTrainer:
         train_loader = DataLoader(
             train_dataset,
             batch_sampler=batch_sampler,
-            num_workers=0,
+            num_workers=8,
             pin_memory=True
         )
         
@@ -208,7 +208,7 @@ class FaceNetTrainer:
             val_loader = DataLoader(
                 val_dataset,
                 batch_sampler=val_batch_sampler,
-                num_workers=0,
+                num_workers=8,
                 pin_memory=True
             )
             

@@ -5,7 +5,6 @@ import random
 from collections import defaultdict
 from PIL import Image
 from pathlib import Path
-from model import MTCNN
 import torch
 import numpy as np
 
@@ -15,9 +14,7 @@ class VGGFace2Dataset(Dataset):
     """
     
     def __init__(self, root_dir: str, split: str = 'train', 
-                 transform: Optional[transforms.Compose] = None, 
-                 device: torch.device = None,
-                 mtcnn_model: MTCNN = None,
+                 transform: Optional[transforms.Compose] = None
 ):
         """
         Initialize VGGFace2 dataset.
@@ -30,8 +27,6 @@ class VGGFace2Dataset(Dataset):
         self.root_dir = Path(root_dir)
         self.split = split
         self.data_dir = self.root_dir / split
-        
-        self.mtcnn = mtcnn_model
         
         # Default FaceNet preprocessing
         if transform is None:
@@ -76,24 +71,6 @@ class VGGFace2Dataset(Dataset):
         
         # Load and transform image
         image = Image.open(img_path).convert('RGB')
-         
-        boxes, probs = self.mtcnn.detect(image)
-        
-        # If no faces detected, use the whole image
-        if boxes is not None and len(boxes) > 0:
-            # Use the face with highest confidence
-            best_box_idx = np.argmax(probs)
-            x1, y1, x2, y2 = boxes[best_box_idx]
-            
-            # Ensure coordinates are within image bounds
-            img_width, img_height = image.size
-            x1 = max(0, int(x1))
-            y1 = max(0, int(y1))
-            x2 = min(img_width, int(x2))
-            y2 = min(img_height, int(y2))
-            
-            # Crop the detected face region
-            image = image.crop((x1, y1, x2, y2))
         
         if self.transform:
             image = self.transform(image)

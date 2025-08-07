@@ -3,6 +3,9 @@ nohup.out
 ada_grad/
 rms_prop/
 adam_70/
+
+dataset_samples.png
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
