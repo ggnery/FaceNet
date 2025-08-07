@@ -215,6 +215,7 @@ class MTCNN(nn.Module):
             self.pnet = PNet(os.path.join(pretrained_folder, "pnet.pth"))
             self.rnet = RNet(os.path.join(pretrained_folder, "rnet.pth"))
             self.onet = ONet(os.path.join(pretrained_folder, "onet.pth"))
+            print("MTCNN weights loaded")
         else:
             self.pnet = PNet()
             self.rnet = RNet()
