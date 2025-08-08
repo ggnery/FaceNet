@@ -52,7 +52,8 @@ class FaceNetTrainer:
               num_epochs: int = 100,
               learning_rate: float = 0.045,
               faces_per_identity: int = 40,
-              num_identities_per_batch: int = 45):
+              num_identities_per_batch: int = 45,
+              chunk_size: int = 100):
         """
         Train the FaceNet model.
         
@@ -79,10 +80,11 @@ class FaceNetTrainer:
             pin_memory=True
         )
         
-        # Optimizer 
+        # Optimizer
         optimizer = optim.Adam(
             self.model.parameters(), 
             lr=learning_rate,
+            weight_decay=1e-4 
         )
         
         # Learning rate scheduler 
@@ -101,13 +103,13 @@ class FaceNetTrainer:
             current_lr = optimizer.param_groups[0]['lr']
             
             # Train one epoch
-            train_loss, train_stats = self.train_epoch(train_loader, optimizer, epoch)
+            train_loss, train_stats = self.train_epoch(train_loader, optimizer, epoch, chunk_size)
             
             scheduler.step()
             
             # Validation
             if val_dataset:
-                val_loss = self.validate(val_dataset)
+                val_loss = self.validate(val_dataset, faces_per_identity, num_identities_per_batch, chunk_size)
                 
             # Log progress
             val_loss_str = f"{val_loss:.4f}" if val_loss is not None else "N/A"
@@ -130,7 +132,7 @@ class FaceNetTrainer:
             self.history['mining_stats'].append(train_stats)
             
     def train_epoch(self, train_loader: DataLoader, optimizer: optim.Optimizer, 
-                     epoch: int) -> Tuple[float, Dict]:
+                     epoch: int, chunk_size) -> Tuple[float, Dict]:
         """Train one epoch."""
         self.model.train()
         
@@ -145,7 +147,7 @@ class FaceNetTrainer:
             
             # Forward pass
             optimizer.zero_grad()
-            loss, info = self.model.compute_loss(images, labels)
+            loss, info = self.model.compute_loss(images, labels, chunk_size)
             
             # Skip batch if no valid triplets found
             if loss.item() == 0.0 and info.get('total_triplets', 0) == 0:
@@ -190,7 +192,10 @@ class FaceNetTrainer:
             
         return avg_loss, dict(epoch_stats)
     
-    def validate(self, val_dataset: VGGFace2Dataset) -> float:
+    def validate(self, val_dataset: VGGFace2Dataset, 
+                 faces_per_identity: int,
+                 num_identities_per_batch: int,
+                 chunk_size: int) -> float:
         """Validate the model using EMA parameters and triplet-aware sampling."""
         self.model.eval()
         
@@ -201,8 +206,8 @@ class FaceNetTrainer:
             # Create validation batch sampler (smaller batches for validation)
             val_batch_sampler = FaceNetBatchSampler(
                 val_dataset, 
-                faces_per_identity=43,
-                num_identities_per_batch=4
+                faces_per_identity=faces_per_identity,
+                num_identities_per_batch=num_identities_per_batch
             )
             
             val_loader = DataLoader(
@@ -220,7 +225,7 @@ class FaceNetTrainer:
                     images = images.to(self.device)
                     labels = labels.to(self.device)
                     
-                    loss, _ = self.model.compute_loss(images, labels)
+                    loss, _ = self.model.compute_loss(images, labels, chunk_size)
                     
                     total_loss += loss.item()
                     num_batches += 1

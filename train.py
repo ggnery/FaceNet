@@ -85,7 +85,8 @@ def main(args):
         num_epochs=args.num_epochs,
         learning_rate=args.learning_rate,
         faces_per_identity=args.faces_per_identity,
-        num_identities_per_batch=args.num_identities_per_batch
+        num_identities_per_batch=args.num_identities_per_batch,
+        chunk_size=args.chunk_size
     )
 
 
@@ -109,6 +110,8 @@ if __name__ == "__main__":
                         help='Number of identities per batch (45*40=1800 total batch size)')
     parser.add_argument('--ema_decay', type=float, default=0.9999,
                         help='EMA decay rate for model parameters (default: 0.9999)')
+    parser.add_argument('--chunk_size', type=int, default=100,
+                        help='Max batch processed by gpu. Note: your batch_size mod(chunk_size) != 1 to avoid BatchNorm error')
     
     args = parser.parse_args()
     main(args)

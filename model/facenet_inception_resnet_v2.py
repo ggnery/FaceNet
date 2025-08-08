@@ -43,17 +43,28 @@ class FaceNetInceptionResNetV2(nn.Module):
         embeddings = self.backbone(x)
         return F.normalize(embeddings, p=2, dim=1)
     
-    def compute_loss(self, images: torch.Tensor, labels: torch.Tensor) -> Tuple[torch.Tensor, Dict]:
+    def compute_loss(self, images: torch.Tensor, labels: torch.Tensor, chunk_size) -> Tuple[torch.Tensor, Dict]:
         """
-        Compute triplet loss for a batch.
+        Compute triplet loss for a batch using chunked forward pass to save memory.
         
         Args:
             images: Batch of images (batch_size, 3, 299, 299)
             labels: Identity labels for each image
+            chunk_size: Size of chunks to process at once
             
         Returns:
             Tuple of (loss, info_dict)
         """
-        embeddings = self.forward(images)
+        batch_size = images.size(0)
+        embeddings_list = []  
+        
+        # Process images in chunks
+        for idx in range(0, batch_size, chunk_size):  
+            chunk_images = images[idx:idx+chunk_size]
+            embeddings_chunk = self.forward(chunk_images)
+            embeddings_list.append(embeddings_chunk)
+        
+        embeddings = torch.cat(embeddings_list, dim=0)
+        
         loss, info = self.triplet_loss(embeddings, labels)
         return loss, info
