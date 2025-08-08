@@ -2,7 +2,7 @@
 
 # Data Configuration
 data:
-  root: "./data/vggface2"  # Path to VGGFace2 dataset root directory
+  root: "./data/croped/vggface2"  # Path to VGGFace2 dataset root directory
   train_dir: "train"          # Training directory relative to root
   val_dir: "val"              # Validation directory relative to root
 
@@ -10,26 +10,25 @@ data:
 model:
   embedding_size: 512         # Size of face embeddings (paper uses 512)
   input_size: [299, 299]      # InceptionResNetV2 input size
-  dropout_keep: 0.4
+  dropout_keep: 0.4           # Dropout keep probability
 
   loss:
     margin: 0.2
 # Training Configuration
 training:
-  num_epochs: 2000            # Number of training epochs (paper uses 1000+)
-  learning_rate: 0.05         # Initial learning rate (InceptionResNetV2 paper uses 0.05)
+  num_epochs: 500            # Max number of training epochs
+  learning_rate: 0.05       # Initial learning rate
   weight_decay: 0.0001
   
   # Learning rate schedule - maps epoch to learning rate
   # Use -1 to indicate end of training
   lr_schedule:
-    0: 0.05
     100: 0.005
     200: 0.0005
     276: -1
   # Batch configuration
-  faces_per_identity: 2      # Number of faces per identity per batch (paper uses ~40)
-  num_identities_per_batch: 2  # Number of identities per batch (45*40=1800 total batch size)
+  faces_per_identity: 43      # Number of faces per identity per batch (paper uses ~40)
+  num_identities_per_batch: 4  # Number of identities per batch (45*40=1800 total batch size)
   
   # EMA (Exponential Moving Average) configuration
   ema_decay: 0.9999           # EMA decay rate for model parameters
