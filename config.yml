@@ -1,0 +1,51 @@
+# FaceNet Training Configuration
+
+# Data Configuration
+data:
+  root: "./data/vggface2"  # Path to VGGFace2 dataset root directory
+  train_dir: "train"          # Training directory relative to root
+  val_dir: "val"              # Validation directory relative to root
+
+# Model Configuration
+model:
+  embedding_size: 512         # Size of face embeddings (paper uses 512)
+  input_size: [299, 299]      # InceptionResNetV2 input size
+  dropout_keep: 0.4
+
+  loss:
+    margin: 0.2
+# Training Configuration
+training:
+  num_epochs: 2000            # Number of training epochs (paper uses 1000+)
+  learning_rate: 0.05         # Initial learning rate (InceptionResNetV2 paper uses 0.05)
+  weight_decay: 0.0001
+  # Batch configuration
+  faces_per_identity: 2      # Number of faces per identity per batch (paper uses ~40)
+  num_identities_per_batch: 2  # Number of identities per batch (45*40=1800 total batch size)
+  
+  # EMA (Exponential Moving Average) configuration
+  ema_decay: 0.9999           # EMA decay rate for model parameters
+  ema_enabled: true           # Enable EMA for model parameters
+
+# Checkpoint Configuration
+checkpoint:
+  dir: "./checkpoints"        # Directory to save checkpoints
+  resume: null                # Path to checkpoint to resume training from (null if starting fresh)
+
+# Data Augmentation Configuration
+augmentation:
+  train:
+    random_horizontal_flip: 0.5  # Probability of horizontal flip
+    random_rotation: 10           # Degrees of rotation
+    color_jitter:
+      brightness: 0.1
+      contrast: 0.1
+      saturation: 0.1
+  
+  val:
+    # No augmentation for validation, only resize and normalize
+
+# Normalization Configuration
+normalization:
+  mean: [0.5, 0.5, 0.5]       # Normalization mean values
+  std: [0.5, 0.5, 0.5]        # Normalization standard deviation values

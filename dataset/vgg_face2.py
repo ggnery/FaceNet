@@ -81,19 +81,16 @@ class VGGFace2Dataset(Dataset):
 class FaceNetBatchSampler(Sampler):
     """
     Custom batch sampler for FaceNet training.
-    Ensures ~40 faces per identity per batch with total batch size ~1800.
     """
     
-    def __init__(self, dataset: VGGFace2Dataset, faces_per_identity: int = 40, 
-                 num_identities_per_batch: int = 45):
+    def __init__(self, dataset: VGGFace2Dataset, faces_per_identity, num_identities_per_batch):
         """
         Initialize the sampler.
         
         Args:
             dataset: VGGFace2Dataset instance
-            faces_per_identity: Number of faces per identity in batch (paper: ~40)
+            faces_per_identity: Number of faces per identity in batch
             num_identities_per_batch: Number of identities per batch
-                                     (45 * 40 = 1800 total batch size)
         """
         self.dataset = dataset
         self.faces_per_identity = faces_per_identity

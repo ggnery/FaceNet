@@ -11,7 +11,11 @@ class FaceNetInceptionResNetV2(nn.Module):
     Follows the original FaceNet paper specifications.
     """
     
-    def __init__(self, device: torch.device, embedding_size: int = 512, 
+    def __init__(self, 
+                 device: torch.device, 
+                 dropout_keep: float,
+                 embedding_size: int,
+                 margin: float, 
                  pretrained_inception: Optional[str] = None):
         """
         Initialize FaceNet model.
@@ -24,14 +28,14 @@ class FaceNetInceptionResNetV2(nn.Module):
         super(FaceNetInceptionResNetV2, self).__init__()
         
         # Initialize InceptionResNetV2 backbone
-        self.backbone = InceptionResNetV2(device, embedding_size=embedding_size)
+        self.backbone = InceptionResNetV2(device, embedding_size, dropout_keep)
         
         # Load pretrained weights if provided
         if pretrained_inception:
             self.backbone.load_state_dict(torch.load(pretrained_inception))
             
         # Initialize TripletLoss
-        self.triplet_loss = TripletLoss(margin=0.2, embedding_size=embedding_size)
+        self.triplet_loss = TripletLoss(margin, embedding_size)
         
         self.device = device
         self.to(device)

@@ -17,8 +17,8 @@ class FaceNetTrainer:
     """
     
     def __init__(self, model: FaceNetInceptionResNetV2, device: torch.device, 
-                 checkpoint_dir: str = './checkpoints', 
-                 ema_decay: float = 0.9999):
+                 checkpoint_dir: str, 
+                 ema_decay: float):
         """
         Initialize trainer with EMA optimization.
         
@@ -48,11 +48,12 @@ class FaceNetTrainer:
         }
         
     def train(self, train_dataset: VGGFace2Dataset, 
-              val_dataset: Optional[VGGFace2Dataset] = None,
-              num_epochs: int = 100,
-              learning_rate: float = 0.045,
-              faces_per_identity: int = 40,
-              num_identities_per_batch: int = 45):
+              val_dataset: Optional[VGGFace2Dataset],
+              num_epochs: int,
+              learning_rate: float,
+              faces_per_identity: int,
+              num_identities_per_batch: int,
+              weight_decay: float):
         """
         Train the FaceNet model.
         
@@ -83,7 +84,7 @@ class FaceNetTrainer:
         optimizer = optim.Adam(
             self.model.parameters(), 
             lr=learning_rate,
-            weight_decay=1e-4 
+            weight_decay=weight_decay
         )
         
         # Learning rate scheduler 
@@ -108,7 +109,7 @@ class FaceNetTrainer:
             
             # Validation
             if val_dataset:
-                val_loss = self.validate(val_dataset, faces_per_identity, num_identities_per_batch, chunk_size)
+                val_loss = self.validate(val_dataset, faces_per_identity, num_identities_per_batch)
                 
             # Log progress
             val_loss_str = f"{val_loss:.4f}" if val_loss is not None else "N/A"
@@ -139,7 +140,7 @@ class FaceNetTrainer:
         epoch_stats = defaultdict(float)
         
         pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}")
-        for batch_idx, (images, labels) in enumerate(pbar):
+        for _, (images, labels) in enumerate(pbar):
             images = images.to(self.device)
             labels = labels.to(self.device)
             
@@ -192,8 +193,7 @@ class FaceNetTrainer:
     
     def validate(self, val_dataset: VGGFace2Dataset, 
                  faces_per_identity: int,
-                 num_identities_per_batch: int,
-                 chunk_size: int) -> float:
+                 num_identities_per_batch: int) -> float:
         """Validate the model using EMA parameters and triplet-aware sampling."""
         self.model.eval()
         

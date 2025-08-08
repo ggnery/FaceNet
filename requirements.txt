@@ -11,6 +11,9 @@ numpy==2.1.2
 matplotlib==3.10.3
 seaborn==0.13.2
 
+# Configuration file parsing
+PyYAML==6.0.1
+
 # Additional dependencies for LFW benchmark
 scikit-learn==1.7.1
 pandas==2.2.3

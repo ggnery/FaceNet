@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.nn.common_types import _size_2_t
 
 class InceptionResNetV2(nn.Module):
-    def __init__(self, device: torch.device, embedding_size=512, dropout_keep=0.8) -> None:
+    def __init__(self, device: torch.device, embedding_size, dropout_keep) -> None:
         super(InceptionResNetV2, self).__init__()
         self.embedding_size = embedding_size
         self.dropout_prob = 1 - dropout_keep
