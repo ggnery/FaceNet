@@ -16,8 +16,8 @@ model:
     margin: 0.2
 # Training Configuration
 training:
-  num_epochs: 500            # Max number of training epochs
-  learning_rate: 0.05       # Initial learning rate
+  num_epochs: 2000            # Max number of training epochs
+  learning_rate: 0.1       # Initial learning rate
   weight_decay: 0.0001
   
   # Optimizer Configuration
@@ -40,9 +40,10 @@ training:
   # Learning rate schedule - maps epoch to learning rate
   # Use -1 to indicate end of training
   lr_schedule:
-    100: 0.005
-    200: 0.0005
-    276: -1
+    300: 0.01
+    400: 0.001
+    1000: 0.0001
+    2000: -1
   # Batch configuration
   faces_per_identity: 43      # Number of faces per identity per batch (paper uses ~40)
   num_identities_per_batch: 4  # Number of identities per batch (45*40=1800 total batch size)
