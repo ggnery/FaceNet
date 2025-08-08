@@ -19,6 +19,14 @@ training:
   num_epochs: 2000            # Number of training epochs (paper uses 1000+)
   learning_rate: 0.05         # Initial learning rate (InceptionResNetV2 paper uses 0.05)
   weight_decay: 0.0001
+  
+  # Learning rate schedule - maps epoch to learning rate
+  # Use -1 to indicate end of training
+  lr_schedule:
+    0: 0.05
+    100: 0.005
+    200: 0.0005
+    276: -1
   # Batch configuration
   faces_per_identity: 2      # Number of faces per identity per batch (paper uses ~40)
   num_identities_per_batch: 2  # Number of identities per batch (45*40=1800 total batch size)

@@ -59,8 +59,14 @@ def main(config: Config):
     # Create model
     model = FaceNetInceptionResNetV2(device=device, embedding_size=config.embedding_size, margin=config.margin, dropout_keep=config.dropout_keep)
     
-    # Create trainer with EMA
-    trainer = FaceNetTrainer(model, device, checkpoint_dir, ema_decay=config.ema_decay)
+    # Create trainer with EMA and learning rate schedule
+    trainer = FaceNetTrainer(
+        model, 
+        device, 
+        checkpoint_dir, 
+        ema_decay=config.ema_decay,
+        lr_schedule=config.lr_schedule
+    )
     
     # Resume from checkpoint
     if config.resume_checkpoint:

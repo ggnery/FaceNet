@@ -55,6 +55,9 @@ class Config:
         self.ema_enabled = training_config.get('ema_enabled', True)
         self.weight_decay = training_config.get('weight_decay', 0.0001)
         
+        # Learning rate schedule
+        self.lr_schedule = training_config.get('lr_schedule', {0: self.learning_rate})
+        
         # Calculated batch size
         self.batch_size = self.faces_per_identity * self.num_identities_per_batch
         
@@ -135,6 +138,12 @@ class Config:
         print("Training Configuration:")
         print(f"  Number of epochs: {self.num_epochs}")
         print(f"  Learning rate: {self.learning_rate}")
+        print(f"  Learning rate schedule:")
+        for epoch, lr in sorted(self.lr_schedule.items()):
+            if lr == -1:
+                print(f"    - Epoch {epoch}: End training")
+            else:
+                print(f"    - Epoch {epoch}: {lr}")
         print(f"  Faces per identity: {self.faces_per_identity}")
         print(f"  Identities per batch: {self.num_identities_per_batch}")
         print(f"  Total batch size: {self.batch_size}")

@@ -18,7 +18,8 @@ class FaceNetTrainer:
     
     def __init__(self, model: FaceNetInceptionResNetV2, device: torch.device, 
                  checkpoint_dir: str, 
-                 ema_decay: float):
+                 ema_decay: float, 
+                 lr_schedule: dict = None):
         """
         Initialize trainer with EMA optimization.
         
@@ -27,11 +28,15 @@ class FaceNetTrainer:
             device: Device to train on
             checkpoint_dir: Directory to save checkpoints
             ema_decay: EMA decay rate (default: 0.9999)
+            lr_schedule: Learning rate schedule dict mapping epoch to lr
         """
         self.model = model
         self.device = device
         self.checkpoint_dir = Path(checkpoint_dir)
         self.checkpoint_dir.mkdir(exist_ok=True)
+        
+        # Learning rate schedule
+        self.lr_schedule = lr_schedule
         
         # Initialize EMA
         self.ema = ExponentialMovingAverage(model, decay=ema_decay, device=device)
@@ -46,6 +51,23 @@ class FaceNetTrainer:
             'val_loss': [],
             'mining_stats': []
         }
+    
+    def get_learning_rate(self, epoch: int) -> float:
+        """Get learning rate for given epoch based on schedule."""
+        # Find the latest epoch <= current epoch in the schedule
+        valid_epochs = [e for e in self.lr_schedule.keys() if e <= epoch]
+        if not valid_epochs:
+            # If no valid epoch found, use the first entry
+            return list(self.lr_schedule.values())[0]
+        
+        latest_epoch = max(valid_epochs)
+        lr = self.lr_schedule[latest_epoch]
+        
+        # Check if this indicates end of training
+        if lr == -1:
+            return -1
+        
+        return lr
         
     def train(self, train_dataset: VGGFace2Dataset, 
               val_dataset: Optional[VGGFace2Dataset],
@@ -87,25 +109,26 @@ class FaceNetTrainer:
             weight_decay=weight_decay
         )
         
-        # Learning rate scheduler 
-        scheduler = optim.lr_scheduler.MultiStepLR(
-            optimizer, 
-            milestones=[500, 1000],  
-            gamma=0.5  
-        )
-        
         # Training loop
         self.logger.info(f"Starting training for {num_epochs} epochs")
         self.logger.info(f"Batch size: {batch_sampler.batch_size} "
                         f"({faces_per_identity} faces x {num_identities_per_batch} identities)")
         
         for epoch in range(num_epochs):
-            current_lr = optimizer.param_groups[0]['lr']
+            # Get learning rate for this epoch
+            current_lr = self.get_learning_rate(epoch)
+            
+            # Check if we should stop training
+            if current_lr == -1:
+                self.logger.info(f"Learning rate schedule indicates end of training at epoch {epoch}")
+                break
+            
+            # Update optimizer learning rate
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = current_lr
             
             # Train one epoch
             train_loss, train_stats = self.train_epoch(train_loader, optimizer, epoch)
-            
-            scheduler.step()
             
             # Validation
             if val_dataset:
@@ -123,7 +146,7 @@ class FaceNetTrainer:
             
             # Save checkpoint
             if (epoch + 1) % 10 == 0:
-                self.save_checkpoint(epoch, optimizer, scheduler, train_loss)
+                self.save_checkpoint(epoch, optimizer, train_loss)
                 
             # Update history
             self.history['train_loss'].append(train_loss)
@@ -234,15 +257,14 @@ class FaceNetTrainer:
                 
         return total_loss / num_batches if num_batches > 0 else 0.0
             
-    def save_checkpoint(self, epoch: int, optimizer: optim.Optimizer, 
-                       scheduler: optim.lr_scheduler.StepLR, loss: float):
+    def save_checkpoint(self, epoch: int, optimizer: optim.Optimizer, loss: float):
         """Save model checkpoint with EMA state."""
         checkpoint = {
             'epoch': epoch,
             'model_state_dict': self.model.state_dict(),
             'ema_state_dict': self.ema.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
-            'scheduler_state_dict': scheduler.state_dict(),
+            'lr_schedule': self.lr_schedule,
             'loss': loss,
             'history': self.history
         }
@@ -279,5 +301,9 @@ class FaceNetTrainer:
         # Load training history if available
         if 'history' in checkpoint:
             self.history = checkpoint['history']
+        
+        # Load learning rate schedule if available
+        if 'lr_schedule' in checkpoint:
+            self.lr_schedule = checkpoint['lr_schedule']
             
         return checkpoint
