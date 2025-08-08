@@ -52,8 +52,7 @@ class FaceNetTrainer:
               num_epochs: int = 100,
               learning_rate: float = 0.045,
               faces_per_identity: int = 40,
-              num_identities_per_batch: int = 45,
-              chunk_size: int = 100):
+              num_identities_per_batch: int = 45):
         """
         Train the FaceNet model.
         
@@ -103,7 +102,7 @@ class FaceNetTrainer:
             current_lr = optimizer.param_groups[0]['lr']
             
             # Train one epoch
-            train_loss, train_stats = self.train_epoch(train_loader, optimizer, epoch, chunk_size)
+            train_loss, train_stats = self.train_epoch(train_loader, optimizer, epoch)
             
             scheduler.step()
             
@@ -131,8 +130,7 @@ class FaceNetTrainer:
                 self.history['val_loss'].append(val_loss)
             self.history['mining_stats'].append(train_stats)
             
-    def train_epoch(self, train_loader: DataLoader, optimizer: optim.Optimizer, 
-                     epoch: int, chunk_size) -> Tuple[float, Dict]:
+    def train_epoch(self, train_loader: DataLoader, optimizer: optim.Optimizer, epoch: int) -> Tuple[float, Dict]:
         """Train one epoch."""
         self.model.train()
         
@@ -147,7 +145,7 @@ class FaceNetTrainer:
             
             # Forward pass
             optimizer.zero_grad()
-            loss, info = self.model.compute_loss(images, labels, chunk_size)
+            loss, info = self.model.compute_loss(images, labels)
             
             # Skip batch if no valid triplets found
             if loss.item() == 0.0 and info.get('total_triplets', 0) == 0:
@@ -225,7 +223,7 @@ class FaceNetTrainer:
                     images = images.to(self.device)
                     labels = labels.to(self.device)
                     
-                    loss, _ = self.model.compute_loss(images, labels, chunk_size)
+                    loss, _ = self.model.compute_loss(images, labels)
                     
                     total_loss += loss.item()
                     num_batches += 1
