@@ -39,7 +39,7 @@ class InceptionResNetV2(nn.Module):
         # Linear
         self.linear = nn.Sequential(
             nn.Linear(2144, self.embedding_size),
-            nn.LayerNorm(self.embedding_size),
+            nn.BatchNorm1d(self.embedding_size),
         )
         
     def forward(self, x: torch.Tensor) -> torch.Tensor:

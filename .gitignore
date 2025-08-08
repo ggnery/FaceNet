@@ -3,6 +3,7 @@ nohup.out
 ada_grad/
 rms_prop/
 adam_70/
+adam_overfitting/
 
 dataset_samples.png
 
