@@ -1,7 +1,7 @@
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple, Optional, Union
 from collections import defaultdict
 from tqdm import tqdm
 import logging
@@ -68,6 +68,43 @@ class FaceNetTrainer:
             return -1
         
         return lr
+    
+    def create_optimizer(self, learning_rate: float, weight_decay: float, 
+                        optimizer_params: Dict) -> optim.Optimizer:
+        """
+        Create optimizer based on configuration.
+        
+        Args:
+            learning_rate: Learning rate
+            weight_decay: Weight decay
+            optimizer_params: Optimizer parameters
+            
+        Returns:
+            Configured optimizer
+        """
+        optimizer_type = optimizer_params.get('type', 'rmsprop')
+        
+        if optimizer_type.lower() == 'adam':
+            return optim.Adam(
+                self.model.parameters(),
+                lr=learning_rate,
+                betas=optimizer_params.get('betas', [0.9, 0.999]),
+                eps=optimizer_params.get('eps', 1e-8),
+                weight_decay=weight_decay,
+                amsgrad=optimizer_params.get('amsgrad', False)
+            )
+        elif optimizer_type.lower() == 'rmsprop':
+            return optim.RMSprop(
+                self.model.parameters(),
+                lr=learning_rate,
+                alpha=optimizer_params.get('alpha', 0.99),
+                eps=optimizer_params.get('eps', 1e-8),
+                weight_decay=weight_decay,
+                momentum=optimizer_params.get('momentum', 0),
+                centered=optimizer_params.get('centered', False)
+            )
+        else:
+            raise ValueError(f"Unsupported optimizer type: {optimizer_type}. Choose 'adam' or 'rmsprop'")
         
     def train(self, train_dataset: VGGFace2Dataset, 
               val_dataset: Optional[VGGFace2Dataset],
@@ -75,7 +112,8 @@ class FaceNetTrainer:
               learning_rate: float,
               faces_per_identity: int,
               num_identities_per_batch: int,
-              weight_decay: float):
+              weight_decay: float,
+              optimizer_params: Dict = None):
         """
         Train the FaceNet model.
         
@@ -86,6 +124,8 @@ class FaceNetTrainer:
             learning_rate: Initial learning rate (InceptionResNetV2 paper uses 0.045)
             faces_per_identity: Faces per identity per batch
             num_identities_per_batch: Number of identities per batch
+            weight_decay: Weight decay for regularization
+            optimizer_params: Optimizer parameters
         """
         # Create custom batch sampler
         batch_sampler = FaceNetBatchSampler(
@@ -102,15 +142,16 @@ class FaceNetTrainer:
             pin_memory=True
         )
         
-        # Optimizer
-        optimizer = optim.Adam(
-            self.model.parameters(), 
-            lr=learning_rate,
-            weight_decay=weight_decay
+        # Create optimizer
+        optimizer = self.create_optimizer(
+            learning_rate=learning_rate,
+            weight_decay=weight_decay,
+            optimizer_params=optimizer_params
         )
         
         # Training loop
         self.logger.info(f"Starting training for {num_epochs} epochs")
+        self.logger.info(f"Optimizer: {optimizer_params.get('type', 'rmsprop').upper()}")
         self.logger.info(f"Batch size: {batch_sampler.batch_size} "
                         f"({faces_per_identity} faces x {num_identities_per_batch} identities)")
         

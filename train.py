@@ -83,6 +83,25 @@ def main(config: Config):
     if val_dataset:
         print(f"Validation samples: {len(val_dataset)}")
     
+    # Optimizer parameters
+    optimizer_params = {}
+    
+    if config.optimizer_type == 'adam':
+        optimizer_params.update({
+            'type': config.optimizer_type,
+            'betas': config.adam_betas,
+            'eps': config.adam_eps,
+            'amsgrad': config.adam_amsgrad
+        })
+    elif config.optimizer_type == 'rmsprop':
+        optimizer_params.update({
+            'type': config.optimizer_type,
+            'alpha': config.rmsprop_alpha,
+            'eps': config.rmsprop_eps,
+            'momentum': config.rmsprop_momentum,
+            'centered': config.rmsprop_centered
+        })
+    
     trainer.train(
         train_dataset=train_dataset,
         val_dataset=val_dataset,
@@ -90,7 +109,8 @@ def main(config: Config):
         learning_rate=config.learning_rate,
         faces_per_identity=config.faces_per_identity,
         num_identities_per_batch=config.num_identities_per_batch,
-        weight_decay=config.weight_decay
+        weight_decay=config.weight_decay,
+        optimizer_params=optimizer_params
     )
 
 

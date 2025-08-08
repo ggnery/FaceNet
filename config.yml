@@ -20,6 +20,23 @@ training:
   learning_rate: 0.05       # Initial learning rate
   weight_decay: 0.0001
   
+  # Optimizer Configuration
+  optimizer:
+    type: "rmsprop"          # Choose: "adam" or "rmsprop"
+    
+    # Adam optimizer parameters
+    adam:
+      betas: [0.9, 0.999]    # Exponential decay rates for moment estimates
+      eps: 0.00000001             # Term added to denominator for numerical stability
+      amsgrad: false         # Whether to use AMSGrad variant
+    
+    # RMSProp optimizer parameters  
+    rmsprop:
+      alpha: 0.9            # Smoothing constant
+      eps: 1.0              # Term added to denominator for numerical stability
+      momentum: 0.9            # Momentum factor
+      centered: false        # Whether to compute centered RMSProp
+  
   # Learning rate schedule - maps epoch to learning rate
   # Use -1 to indicate end of training
   lr_schedule:

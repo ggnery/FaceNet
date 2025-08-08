@@ -58,6 +58,23 @@ class Config:
         # Learning rate schedule
         self.lr_schedule = training_config.get('lr_schedule', {0: self.learning_rate})
         
+        # Optimizer Configuration
+        optimizer_config = training_config.get('optimizer', {})
+        self.optimizer_type = optimizer_config.get('type', 'rmsprop').lower()
+        
+        # Adam optimizer parameters
+        adam_config = optimizer_config.get('adam', {})
+        self.adam_betas = adam_config.get('betas', [0.9, 0.999])
+        self.adam_eps = adam_config.get('eps', 1e-8)
+        self.adam_amsgrad = adam_config.get('amsgrad', False)
+        
+        # RMSProp optimizer parameters
+        rmsprop_config = optimizer_config.get('rmsprop', {})
+        self.rmsprop_alpha = rmsprop_config.get('alpha', 0.99)
+        self.rmsprop_eps = rmsprop_config.get('eps', 1e-8)
+        self.rmsprop_momentum = rmsprop_config.get('momentum', 0)
+        self.rmsprop_centered = rmsprop_config.get('centered', False)
+        
         # Calculated batch size
         self.batch_size = self.faces_per_identity * self.num_identities_per_batch
         
@@ -144,6 +161,16 @@ class Config:
                 print(f"    - Epoch {epoch}: End training")
             else:
                 print(f"    - Epoch {epoch}: {lr}")
+        print(f"  Optimizer: {self.optimizer_type.upper()}")
+        if self.optimizer_type == 'adam':
+            print(f"    - Betas: {self.adam_betas}")
+            print(f"    - Epsilon: {self.adam_eps}")
+            print(f"    - AMSGrad: {self.adam_amsgrad}")
+        elif self.optimizer_type == 'rmsprop':
+            print(f"    - Alpha: {self.rmsprop_alpha}")
+            print(f"    - Epsilon: {self.rmsprop_eps}")
+            print(f"    - Momentum: {self.rmsprop_momentum}")
+            print(f"    - Centered: {self.rmsprop_centered}")
         print(f"  Faces per identity: {self.faces_per_identity}")
         print(f"  Identities per batch: {self.num_identities_per_batch}")
         print(f"  Total batch size: {self.batch_size}")
