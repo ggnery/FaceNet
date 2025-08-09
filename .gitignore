@@ -4,6 +4,8 @@ ada_grad/
 rms_prop/
 adam_70/
 adam_overfitting/
+no_overfitting/
+training_plots/
 
 dataset_samples.png
 

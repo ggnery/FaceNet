@@ -10,6 +10,7 @@ from pathlib import Path
 from dataset import VGGFace2Dataset, FaceNetBatchSampler
 from model import FaceNetInceptionResNetV2
 from model import ExponentialMovingAverage
+import gc
 
 class FaceNetTrainer:
     """
@@ -38,8 +39,9 @@ class FaceNetTrainer:
         # Learning rate schedule
         self.lr_schedule = lr_schedule
         
-        # Initialize EMA
-        self.ema = ExponentialMovingAverage(model, decay=ema_decay, device=device)
+        # Store EMA parameters for lazy initialization
+        self.ema_decay = ema_decay
+        self.ema = None  # Will be initialized when needed (Lazy init)
         
         # Setup logging
         logging.basicConfig(level=logging.INFO)
@@ -52,6 +54,11 @@ class FaceNetTrainer:
             'mining_stats': []
         }
     
+    def ensure_ema_initialized(self):
+        """Initialize EMA if not already done. Called lazily to avoid memory issues."""
+        if self.ema is None:
+            self.ema = ExponentialMovingAverage(self.model, decay=self.ema_decay, device=self.device)
+      
     def get_learning_rate(self, epoch: int) -> float:
         """Get learning rate for given epoch based on schedule."""
         # Find the latest epoch <= current epoch in the schedule
@@ -221,6 +228,7 @@ class FaceNetTrainer:
             optimizer.step()
             
             # Update EMA after optimizer step
+            self.ensure_ema_initialized()
             self.ema.update(self.model)
             
             # Update statistics
@@ -262,6 +270,7 @@ class FaceNetTrainer:
         self.model.eval()
         
         # Apply EMA parameters for validation
+        self.ensure_ema_initialized()
         self.ema.apply_shadow(self.model)
         
         try:
@@ -294,12 +303,14 @@ class FaceNetTrainer:
                         
         finally:
             # Always restore original parameters
-            self.ema.restore(self.model)
+            if self.ema is not None:
+                self.ema.restore(self.model)
                 
         return total_loss / num_batches if num_batches > 0 else 0.0
             
     def save_checkpoint(self, epoch: int, optimizer: optim.Optimizer, loss: float):
         """Save model checkpoint with EMA state."""
+        self.ensure_ema_initialized()
         checkpoint = {
             'epoch': epoch,
             'model_state_dict': self.model.state_dict(),
@@ -321,23 +332,54 @@ class FaceNetTrainer:
             
     def load_checkpoint(self, checkpoint_path: str):
         """
-        Load model checkpoint with EMA state.
+        Load model checkpoint with EMA state with memory optimization.
         
         Args:
             checkpoint_path: Path to checkpoint file
-        """
-        checkpoint = torch.load(checkpoint_path, map_location=self.device)
+        """     
+        # Clear GPU cache before loading
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         
-        # Load model state
-        self.model.load_state_dict(checkpoint['model_state_dict'])
+        # Load checkpoint with CPU mapping to reduce GPU memory pressure
+        checkpoint = torch.load(checkpoint_path, map_location='cpu')
+        
+        # Move model to CPU temporarily to avoid device mismatch during loading
+        self.model.cpu()
+        
+        # Extract model state dict and load
+        model_state_dict = checkpoint['model_state_dict']
+        self.model.load_state_dict(model_state_dict, strict=True)
+        
+        # Now move the loaded model back to GPU
+        self.model.to(self.device)
+        
+        # Clear intermediate variables and collect garbage
+        del model_state_dict
+        gc.collect()
+        
+        # Clear GPU cache after model transfer
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         
         # Load EMA state if available
         if 'ema_state_dict' in checkpoint:
-            self.ema.load_state_dict(checkpoint['ema_state_dict'])
+            # Initialize EMA from the loaded model (avoids duplicate creation)
+            self.ema = ExponentialMovingAverage(self.model, decay=self.ema_decay, device=self.device)
+            
+            # Extract EMA state dict
+            ema_state_dict = checkpoint['ema_state_dict']
+            self.ema.load_state_dict(ema_state_dict)
+            
+            # Clear EMA state dict and collect garbage
+            del ema_state_dict
+            gc.collect()
+            
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
         else:
-            self.logger.warning("No EMA state found in checkpoint, initializing EMA from current model")
-            # Re-initialize EMA from current model if not in checkpoint
-            self.ema = ExponentialMovingAverage(self.model, decay=self.ema.decay, device=self.device)
+            # Initialize EMA from current model if not in checkpoint
+            self.ema = ExponentialMovingAverage(self.model, decay=self.ema_decay, device=self.device)
         
         # Load training history if available
         if 'history' in checkpoint:
@@ -346,5 +388,19 @@ class FaceNetTrainer:
         # Load learning rate schedule if available
         if 'lr_schedule' in checkpoint:
             self.lr_schedule = checkpoint['lr_schedule']
-            
-        return checkpoint
+        
+        # Store essential checkpoint info
+        checkpoint_info = {
+            'epoch': checkpoint.get('epoch', 0),
+            'loss': checkpoint.get('loss', 0.0)
+        }
+        
+        # Clear the full checkpoint from memory
+        del checkpoint
+        gc.collect()
+        
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        
+        self.logger.info("Checkpoint loading completed")
+        return checkpoint_info
